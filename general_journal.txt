@@ -1,0 +1,14 @@
+2025-04-24
+    just need to put a temp card up on the homepage
+    and configure a compiling workflow
+
+
+2025-04-23
+    managing working directories is a nightmare
+    gotta start rstudio from the root to make things have a chance to work
+
+
+2025-03-05
+    stuck on adding code folding button
+    added css js and source.class='code-fold' to rmarkdown
+    doesn't work

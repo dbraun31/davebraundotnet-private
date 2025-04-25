@@ -1,0 +1,21 @@
+{{ define "main" }}
+    <section class="hero">
+        <h1 class="p-name">{{ .Site.Params.Headliner }}</h1>
+        <p class="subtitle">{{ .Site.Params.description }}</p>
+        <p>&nbsp;</p>
+        <p class="subtitle">
+            
+        {{ range .Site.Params.socials }}
+            <a href="{{ .url }}" target="_blank">{{ .name }}</a>&nbsp; •&nbsp;
+        {{ end }}
+          
+        </p>
+
+        <p>{{ .Content }}</p>
+    </section>
+    <main class="h-entry e-content container col">
+        <!-- Add or remove partials to build your home page below -->
+        {{ partial "cards" . }}
+        {{ partial "contact" . }}
+    </main>
+{{ end }}

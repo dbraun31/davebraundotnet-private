@@ -1,0 +1,455 @@
+---
+title: "Does the brain cope with anxiety by numbing out?"
+summary: We found that the brain is less sensitive to signals from the heart (a key dynamic for emotional processing) during highly energized states---an effect that was more pronounced for those high in anxiety. In this post, I walk through a really cool whole-brain analysis I used to uncover this effect.
+skills:
+    - Python
+    - R
+    - Non-parametric statistics
+read_time: 7
+output: bookdown::html_document2
+---
+
+
+
+<p>{{% highlightbox %}}
+📄 <a href="&#39;#&#39;">Read the Paper</a><br />
+🖼 <a href="&#39;#&#39;">View the Poster</a></p>
+<div id="tldr" class="section level3">
+<h3>TL;DR</h3>
+<p>I used EEG and unsupervised machine learning techniques to analyze how
+the brain processes internal signals (interoception) and its link to anxiety. I
+found that the brain is less sensitive to internal signals during high energy
+states, a pattern that was amplified during states of anxiety—insights from
+this project are relevant to stress detection and human-centered design.</p>
+</div>
+<div id="key-skills" class="section level3">
+<h3>Key Skills</h3>
+<ul>
+<li>🧹 <strong>Data Wrangling</strong> – Cleaned high-dimensional EEG &amp; physiological data</li>
+<li>📊 <strong>Exploratory Data Analysis</strong> – Examined relationships between physiological and behavioral measures</li>
+<li>🤖 <strong>Machine learning</strong> – Applied signal separation for artifact removal and clustering to extract insights</li>
+<li>📈 <strong>Visualization</strong> – Created clear, insight-driven plots</li>
+</ul>
+</div>
+<div id="what-i-learned" class="section level3">
+<h3>What I Learned</h3>
+<p>How to extract meaningful signals from noisy biological data, a skill
+transferable to real-world time-series analysis (wearables, health tech, user
+behavior modeling).</p>
+<p>{{% /highlightbox %}}</p>
+<p>Sometimes life is angsty. We’ve all been there—you’re about to talk in front
+of a group, have a difficult conversation with someone, or do some task where a
+mistake would be really bad. While it might be healthier not to avoid anxiety,
+sometimes it’s just easier to reach for a distraction. What you may not know is
+that your brain might subconsciously be trying to avoid anxiety as well.</p>
+<div class="figure" style="text-align: center"><span style="display:block;" id="fig:unnamed-chunk-1"></span>
+<img src="distraction.png" alt="Distraction is an easy way to avoid feeling anxiety." width="55%" />
+<p class="caption">
+Figure 1: Distraction is an easy way to avoid feeling anxiety.
+</p>
+</div>
+</div>
+<div id="what-we-were-interested-in" class="section level2">
+<h2><u>What we were interested in </u></h2>
+<div id="we-wanted-to-look-at-how-the-brain-responds-to-heartbeats-across-different-states-of-anxiety-and-energy" class="section level3">
+<h3>We wanted to look at how the brain responds to heartbeats across different states of anxiety and energy</h3>
+<p>Previous research suggests that anxiety disrupts our brain’s <em>subconsious</em>
+sensitivity to bodily signals, a sensitivity referred to as <em>interoception</em>.
+<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> Interoception is our brain’s way of sensing and regulating many of the
+body’s functions, such as breathing and responding to heart rhythms.</p>
+<p>Differences in interoception have also been linked to differences in one’s sense
+of energy or activation<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a><sup>,</sup><a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>—a sense we’ll refer to
+as <em>subjective arousal</em>. Subjective arousal—much like anxiety and
+interoception—is continually and spontaneously fluctuating, even when people
+are just at rest. But no previous study has looked at how subjective arousal,
+anxiety, and interoception spontaneously fluctuate with each other at rest.</p>
+<p>We wanted to look at how the brain responds to bodily signals—specifically,
+heartbeats—during spontaneous fluctuations in subjective arousal when people
+are at rest, and how this interaction might be different for those low vs. high
+in anxiety. How these processes play out at rest might be important because
+certain brain networks are typically only active at rest, and these networks
+contribute to patterns like rumination and worry that feed into anxiety.
+<a href="#fn4" class="footnote-ref" id="fnref4"><sup>4</sup></a></p>
+<p>Understanding how the brain shifts interoception in response to changing
+subjective arousal states during rest might help us better understand processes
+that underlie anxiety.</p>
+</div>
+</div>
+<div id="how-we-did-it" class="section level2">
+<h2><u>How we did it</u></h2>
+<div id="we-measured-electrical-activity-from-the-brain-and-heart-during-rest-and-occassionally-asked-people-how-they-were-feeling" class="section level3">
+<h3>We measured electrical activity from the brain and heart during rest and occassionally asked people how they were feeling</h3>
+<p>A precise way to measure neural interoception is through what’s called the
+<em>heartbeat evoked potential</em> (HEP), which is basically the brain’s
+electrophysiological response to heartbeats.<a href="#fn5" class="footnote-ref" id="fnref5"><sup>5</sup></a> Your brain is constantly emitting
+electricity (emanating from the communication between neurons), and when the brain’s
+electrical response is high following a heartbeat, that’s thought to reflect
+higher levels of neural interoceptive sensitivity to the heart.</p>
+<p>Participants (51) came into our lab and completed a survey indicating their
+level of state anxiety, or how much anxiety they were experiencing <em>in that
+moment</em>. We then fitted them with an EEG cap to measure their neural electrical
+signals. This EEG cap included 31 scalp electrodes plus an electrode that we
+placed on participants’ back (ECG) to measure their heartbeat activity (see
+<em>Figure</em> <a href="#fig:eeg">2</a>).</p>
+<div class="figure"><span style="display:block;" id="fig:eeg"></span>
+<img src="eeg_cap.jpg" alt="(A) Cartoonized illustration of EEG cap and (B) placement of EEG electrodes in the experiment according to the 10-20 coordinate system" width="100%" />
+<p class="caption">
+Figure 2: (A) Cartoonized illustration of EEG cap and (B) placement of EEG electrodes in the experiment according to the 10-20 coordinate system
+</p>
+</div>
+<p>Participants stared at a blank screen and were told to let their minds wander
+freely. Every so often, a set of questions (ie, a <em>thought probe</em>) appeared
+asking participants to report different aspects of their experience. Most
+important was the question asking about their level of <em>subjective arousal</em>,
+which includes feelings of energy linked to emotion, and participants gave
+ratings on a scale from 0 (completely deactivated) to 100 (completely activated;
+see <em>Figure</em> <a href="#fig:design">3</a>A).</p>
+<div class="figure" style="text-align: left"><span style="display:block;" id="fig:design"></span>
+<img src="figure1.png" alt="Trial sequence and analysis approach. (A) Participants were instructed to let their minds wander freely while viewing a blank screen and occasionally reported on aspects of their experience (such as their level of subjective arousal). (B) Brain EEG signals before a thought probe and directly after heartbeats were averaged together, separated by a median split in subjective arousal, and submitted to a whole-brain analysis (ie, cluster-based permutation analysis)." width="100%" />
+<p class="caption">
+Figure 3: Trial sequence and analysis approach. (A) Participants were instructed to let their minds wander freely while viewing a blank screen and occasionally reported on aspects of their experience (such as their level of subjective arousal). (B) Brain EEG signals before a thought probe and directly after heartbeats were averaged together, separated by a median split in subjective arousal, and submitted to a whole-brain analysis (ie, cluster-based permutation analysis).
+</p>
+</div>
+<p>To calculate the HEP, I isolated the 10 s period before the onset of a thought
+probe and extracted the EEG signals (from all 31 electrodes) that occurred
+directly after a heartbeat (see <em>Figure</em> <a href="#fig:design">3</a><em>B</em>). I then separated
+the 10 s pre-probe periods according to whether the subjective arousal rating
+obtained during the thought probe was high or low (based on a
+within-participants median split on subjective arousal).</p>
+<p>Finally, I averaged across the high vs. low levels of subjective arousal
+(collapsing across heartbeats and probes), which gave me one averaged brain
+signal value for timepoints immediately following a heartbeat, for each EEG
+channel, for each subjective arousal condition, across all participants. In
+other words, we had for each participant an array of shape (timepoints x channel
+x condition), or (100 x 31 x 2).</p>
+<p>Ultimately, we wanted to know how interoceptive sensitivity to cardiac signals (as measured
+with HEPs) is different in periods leading up to self-reported high vs. low
+states of subjective arousal. To assess this, I took those arrays defined
+in the previous paragraph and conducted a whole brain analysis using what’s
+called a <strong>cluster-based permutation test</strong>.</p>
+<p>Cluster-based permutation test is a super powerful and flexible data-driven
+method for finding differences between conditions in high-dimensional space. In
+our example, the conditions are a median split on subjective arousal ratings,
+each thought probe was labelled as “high” or “low” subjective arousal. The high
+dimensional space is the remaining (time x channels) array of EEG data for each
+participant. In short, we want to find whether EEG voltage is different across
+high vs. low levels of subjective arousal conditions at any timepoint(s) and for
+any EEG channel(s).</p>
+<details>
+<summary>
+<strong>Expand this section to optionally read more about cluster-based permutation test and see how I implemented it in code.</strong>
+</summary>
+<h2 style="color:#7aa6b8;">
+<u>Technical spotlight</u>: Cluster-based permutation testing
+</h2>
+</div>
+<div id="what-is-a-cluster-based-permutation-test" class="section level3">
+<h3>What is a cluster-based permutation test?</h3>
+<p>We’re trying to find a meaningful pattern in brain data, but brain data is <strong>massive</strong>. In our case, we’re looking across 6,200 data points. If we tested each one individually, we’d almost certainly get false positives (random noise that <em>looks</em> meaningful).</p>
+<p>A <strong>cluster-based permutation test</strong> helps solve this.</p>
+<p><strong>The core idea:</strong></p>
+<p>Instead of asking “is this single time point significant?”, we ask:</p>
+<blockquote>
+<p>Are there <strong>clusters</strong> of nearby data points that are all showing an effect?</p>
+</blockquote>
+<p>If a real difference exists, we expect it to show up not just as a blip, but as a <strong>spatially or temporally coherent cluster.</strong></p>
+<p><strong>How it works:</strong></p>
+<ol style="list-style-type: decimal">
+<li><strong>Compute the actual data difference</strong> between two groups (eg, high vs. low subjective arousal) at every point in time or space.</li>
+<li><strong>Identify clusters</strong> of adjacent points that pass some basic threshold (eg, t-values &gt; 2).</li>
+<li><strong>Calculate a cluster-level statistic</strong> (like the sum of t-values) for each cluster.</li>
+<li><strong>Randomly shuffle</strong> the group labels many times (eg, 5,000 permutations) and repeat steps 1-3 each time.</li>
+<li><strong>Compare your original clusters</strong> to the shuffled ones. If a real cluster is bigger than 95% of the ones you’d see by chance, it’s considered statistically significant.</li>
+</ol>
+<p>It’s so powerful because we don’t need to make <strong>assumptions</strong> about what the data would look like if there were no effect (ie, a null distribution). This allows us to compare many data points over an <em>arbitrary</em> number of dimensions to look for significant effects, making cluster-based permutation testing the perfect tool for finding differences in our brain data.</p>
+</div>
+<div id="how-i-implemented-it" class="section level3">
+<h3>How I implemented it</h3>
+<p>To make the cluster-based permutation test flexible and reproducible, I wrote a collection of functions in both Python and R and coordinated them with R’s fancy <a href="https://rstudio.github.io/reticulate/">reticulate</a> package. The Python functions actually ran the cluster test using <a href="https://mne.tools/stable/generated/mne.stats.spatio_temporal_cluster_test.html"><code>mne.stats.spatio_temporal_cluster_test</code></a>, and the R functions were mostly for summarizing the result. I’m highlighting here the main Python function doing most of the work, but you can see the full set of functions on GitHub (for <a href="https://gist.github.com/dbraun31/23299f56013abba510e23014bc1d19d8">Python</a> and <a href="https://gist.github.com/dbraun31/8396dad9a13fa4fac9746a3108d6c94e">R</a>).</p>
+<p>The whole main Python function:</p>
+<div class="show-default">
+
+</div>
+<pre class="python"><code>from mne.stats import spatio_temporal_cluster_test
+
+def permutation_cluster_test(item,
+                             low_anchor,
+                             bads,
+                             time_window_min=0.25,
+                             initial_alpha=0.01,
+                             path=Path(&#39;analysis/data/derivatives/hep/06-evoked-clean&#39;)):
+                                 
+    &#39;&#39;&#39;
+    Conducts a permutation-based clustering analysis across a median split of
+    item, analyzing time points from time_window_min to end of epoch. 
+    
+    --- PARAMETERS ---
+    ------------------
+    item (str): Item name
+    low_anchor (str): Name of low anchor on the scale (all lowercase)
+    time_window_min (float): Analyze time points after this value
+    initial_alpha (float): Alpha for finding initial clusters
+    path (pathlib.Path): Path to directory containing data
+    
+    --- RETURNS ---
+    ---------------
+    out (dict) containing results of permutation test:
+        t_obs: (N_timepoints x M_channels) matrix with t values as elements
+        clusters: list of (array(time_idx, ...), array(channel_idx, ...)) tuples of all found clusters
+        p_values: np.array of shape (N_clusters,) where each element is a p value
+    &#39;&#39;&#39;
+
+    # Open dictionary 
+    assert(isinstance(item, str))
+    file = &#39;eeg_dict_{}.pkl&#39;.format(item)
+    full_path = path / Path(file)
+    with open(full_path, &#39;rb&#39;) as f:
+        dic = pickle.load(f)
+    # Ensure bads is a list of ints
+    if isinstance(bads, list):
+        bads = [int(x) for x in bads]
+    else:
+        bads = [int(bads)]
+        
+    # Get numpy arrays of shape (subjects, time, chans) for each condition
+    low, high = _format_for_clustering(dic, low_anchor, bads)
+    
+    # Get a sample evoked object for computing distances
+    probe_set = dic[list(dic.keys())[0]][low_anchor]
+    sample_evoked = probe_set[list(probe_set.keys())[0]]
+    adjacency, _ = find_ch_adjacency(sample_evoked.info, &#39;eeg&#39;)
+    
+    # Get the first index of timepoint thats &gt;= the min timepoint
+    time_window_idx = [i for i, e in enumerate(sample_evoked.times) if e &gt;= time_window_min][0]
+    times = sample_evoked.times[time_window_idx:]
+    channels = sample_evoked.info[&#39;ch_names&#39;]
+    
+    # Format data as list of arrays
+    X = [low[:, time_window_idx:, :],
+        high[:, time_window_idx:, :]]
+        
+    # Configure parameters
+    df = low.shape[0] - 1
+    t_crit = stats.t.ppf(1 - initial_alpha, df)
+    tail = 0 
+    
+    # Run test
+    t_obs, clusters, p_values, _ = spatio_temporal_cluster_test(
+        X,
+        n_permutations=1000,
+        threshold=t_crit,
+        tail=tail,
+        n_jobs=None,
+        seed = 1510,
+        buffer_size=None,
+        adjacency=adjacency,
+        stat_fun=_my_t
+    )
+    
+    out = {&#39;t_obs&#39;: t_obs, &#39;clusters&#39;: clusters, &#39;p_values&#39;: p_values, 
+    &#39;times&#39;: times, &#39;channels&#39;: channels}
+    
+    return out</code></pre>
+<p>Let’s zoom into the important stuff.</p>
+<p>The actual cluster-based permutation test is being run with this code:</p>
+<div class="show-default">
+
+</div>
+<pre class="python"><code># Run test
+t_obs, clusters, p_values, _ = spatio_temporal_cluster_test(
+    X,
+    n_permutations=1000,
+    threshold=t_crit,
+    tail=tail,
+    n_jobs=None,
+    seed = 1510,
+    buffer_size=None,
+    adjacency=adjacency,
+    stat_fun=_my_t
+)</code></pre>
+<p>This function (<code>spatio_temporal_cluster_test</code>) comes from the <a href="https://mne.tools">MNE library</a>, which is an excellent set of EEG/MEG analysis tools written for Python. Let’s step through the important input arguments.</p>
+<p><strong>The input data</strong></p>
+<p>The input data (<code>X</code>) needs to be formatted as a list of arrays, where each array in the list is data from one of the conditions—in our case, the two subjective arousal conditions (high vs. low). This formatting is done by the following lines of code:</p>
+<div class="show-default">
+
+</div>
+<pre class="python"><code># Get numpy arrays of shape (subjects, time, chans) for each condition
+low, high = _format_for_clustering(dic, low_anchor, bads)
+
+# Format data as list of arrays
+X = [low[:, time_window_idx:, :],
+    high[:, time_window_idx:, :]]</code></pre>
+<p>I’m first calling one of my other functions (not shown above) to format the relevant data into two arrays split by subjective arousal condition. These arrays represent the data across each timepoint and channel for each subject. Next, I’m concatenating these two arrays into a list—taking only a subset of the time window with <code>time_window_idx</code>—which serves as our final input data <code>X</code>. We’re analyzing only a subset of the time window because we want to conduct our statistics only on those measurements that occur at least 250 ms after each heartbeat, which is to ensure that heartbeat activity doesn’t contaminate the neural activity we’re interested in analyzing.</p>
+<p><strong>The statistical hyperparameters</strong></p>
+<p>We need to configure a number of statistical hyperparameters that will influence how the cluster test algorithm runs. We first need to decide on what is a significant threshold for forming a cluster in the first place (ie, the <code>threshold</code> input argument). Since we’re only comparing two conditions within participants, the statistical test we use to compute this threshold is a <em>paired-samples t test</em>.</p>
+<p>For each of the many, many comparisons across data points, the algorithm computes one t test, and the threshold we set determines whether the resulting t value is considered significant. Significant t values that are adjacent to one another in data space are considered to be a “cluster”. For this type of test, it’s common to use an alpha value (ie, false positive rate) of 0.01 as a cluster forming threshold. But we need to convert that alpha to a t value, and for that we use the quantile function of the t distribution (ie, the function that maps probability values to t values, or the inverse cumulative distribution function):</p>
+<div class="show-default">
+
+</div>
+<pre class="python"><code># Configure parameters
+df = low.shape[0] - 1
+t_crit = stats.t.ppf(1 - initial_alpha, df)
+tail = 0 </code></pre>
+<p>The degrees of freedom (df) is the number of participants minus 1, and we
+subtract alpha from 1 to calculate the cumulative density between the tail of
+the t distribution and the alpha value. Finally, <code>tail=0</code> tells the algorithm we
+want to perform a two-tailed test, meaning either condition can have greater EEG
+voltage than the other.</p>
+<p>The algorithm returns the data points of all the clusters found, along with the t values across all data points, and cluster-specific p values. If a cluster has a p value of less than .05, we know there was a significant difference across subjective arousal conditions during the cluster’s time period and for that cluster’s channels.</p>
+<p><strong>That’s it for the technical spotlight! Now back to the main post.</strong></p>
+</details>
+</div>
+<div id="research-questions" class="section level3">
+<h3>Research questions</h3>
+<p>In this post, I address three questions with the analyses:</p>
+<ol style="list-style-type: decimal">
+<li>How was our measure of subjective arousal related to physiological arousal?</li>
+<li>How does interoception (as measured with HEP) vary across states of subjective arousal?</li>
+<li>How does the relationship between interoception and subjective arousal change depending on state anxiety?</li>
+</ol>
+</div>
+</div>
+<div id="what-we-found" class="section level2">
+<h2><u>What we found</u></h2>
+<div id="subjective-arousal-was-unrelated-to-physiological-arousal-and-somewhat-related-to-other-dimensions-of-experience" class="section level3">
+<h3>1. Subjective arousal was unrelated to physiological arousal and somewhat related to other dimensions of experience</h3>
+<p>To first get a better sense of what we were really measuring with our subjective
+arousal scale, I looked at how subjective arousal ratings compared to (i) more
+traditional measures of objective, physiological arousal (such as heartrate),
+and (ii) how subjective arousal related to other dimensions of ongoing
+experience that we measured with our thought probes (such as tendency to think
+about the future). <em>Figure</em> <a href="#fig:correlations">4</a> shows participant-specific
+correlations between subjective arousal and both heartrate and future thinking.</p>
+<pre class="r"><code># Import data
+d &lt;- read.csv(&#39;MW_EEG_behavioral.csv&#39;)
+bads &lt;- c(10, 13, 14)
+d &lt;- d[!d$subject %in% bads,]
+ecg &lt;- read.csv(&#39;MW_ECG_summary.csv&#39;)
+
+# Mean imputation on very few missing values
+d &lt;- d %&gt;% 
+    group_by(subject) %&gt;% 
+    # Mean imputation
+    mutate(trial = 1:(n()), arou = ifelse(!is.na(arou), arou, mean(arou, na.rm=TRUE))) %&gt;% 
+    ungroup() %&gt;% 
+    select(subject, trial, arou, fut) 
+
+# Summarize heart metric
+heart &lt;- ecg %&gt;% 
+    rename(trial = probe) %&gt;% 
+    mutate(trial = as.integer(gsub(&#39;Probe&#39;, &#39;&#39;, trial)),
+           timepoint = sample / 250) %&gt;% 
+    mutate(hr = 60 / (timepoint - lag(timepoint))) %&gt;% 
+    group_by(subject, trial) %&gt;% 
+    summarize(hr = mean(hr, na.rm=TRUE)) %&gt;% 
+    inner_join(d) 
+## `summarise()` has grouped output by &#39;subject&#39;. You can override using the
+## `.groups` argument.
+## Joining with `by = join_by(subject, trial)`
+
+
+# Compute summaries for viz
+sd &lt;- heart %&gt;% 
+    gather(metric, measure, hr, fut) %&gt;% 
+    group_by(subject, metric) %&gt;% 
+    summarize(r = cor.test(measure, arou)$estimate,
+              ci_l = cor.test(measure, arou)$conf.int[1],
+              ci_h = cor.test(measure, arou)$conf.int[2],
+              p = cor.test(measure, arou)$p.value) %&gt;% 
+    mutate(sig = case_when(
+        p &lt; .001 ~ &#39;p &lt; .001&#39;,
+        p &lt; .01 ~ &#39;p &lt; .01&#39;,
+        p &lt; .05 ~ &#39;p &lt; .05&#39;,
+        p &gt;= .05 ~ &#39;N.S.&#39;
+    )) %&gt;% 
+    mutate(sig = factor(sig, levels = c(&#39;N.S.&#39;, &#39;p &lt; .05&#39;, &#39;p &lt; .01&#39;, &#39;p &lt; .001&#39;)))
+## `summarise()` has grouped output by &#39;subject&#39;. You can override using the
+## `.groups` argument.
+    
+
+# ---  COMPUTE AGGREGATE STATS --- #
+
+# Use Fisher Z to transform correlations to unbounded space
+fisherz &lt;- function(r) {
+    return(0.5 * log((1 + r) / (1 - r)))
+}
+
+sd$z &lt;- fisherz(sd$r)
+N &lt;- length(unique(sd$subject))
+
+# Aggregate correlation statistics
+stats &lt;- sd %&gt;% 
+    group_by(metric) %&gt;% 
+    summarize(m = mean(r), se = sd(r) / sqrt(N), t = t.test(r, mu=0)$statistic,
+              df = t.test(r, mu=0)$parameter, p = t.test(r, mu=0)$p.value,
+              bf =  (extractBF(ttestBF(r, mu=0))$bf)) %&gt;% 
+    mutate(p_code = ifelse(p &lt; .001, &#39;&lt; .001&#39;, paste0(&#39;= &#39;, round(p, 3))),
+           bf = ifelse(metric==&#39;fut&#39;, bf, 1 / bf)) %&gt;% 
+    mutate(r = -1, subject = c(1, 24),
+           label = paste0(&#39;p &#39;, p_code, c(&#39;\nBF Alt = &#39;, &#39;\nBF Null = &#39;), round(bf, 2))) 
+
+metric_order &lt;- c(&#39;hr&#39;, &#39;fut&#39;)
+stats$metric &lt;- factor(stats$metric, levels = metric_order)
+stats$metric &lt;- recode(stats$metric, `hr` = &#39;Heart rate&#39;, `fut` = &#39;Future thinking&#39;)
+           
+colors &lt;- brewer_pal(palette = &#39;RdBu&#39;)(10)[c(1, 10, 8, 6)]
+
+# Visualize
+p3 &lt;- sd %&gt;% 
+    mutate(metric = factor(metric, levels = metric_order)) %&gt;% 
+    mutate(metric = recode(metric, `hr` = &#39;Heart rate&#39;, `fut` = &#39;Future thinking&#39;)) %&gt;% 
+    ggplot(aes(x = reorder_within(subject, r, metric), y = r)) + 
+    geom_hline(yintercept = 0, linetype = &#39;dashed&#39;) + 
+    geom_errorbar(aes(ymin = ci_l, ymax = ci_h, color = sig), width = .2, linewidth = .5) +
+    geom_point(aes(color = sig), size = .5) + 
+    geom_text(data = stats, aes(label=label), size = 3, hjust = 0) + 
+    scale_color_manual(values = colors) +
+    labs(
+        x = &#39;Participant&#39;,
+        y = &#39;Within-participant correlation with subjective arousal&#39;,
+        color = &#39;&#39;
+    ) + 
+    scale_x_reordered() +  
+    scale_y_continuous(breaks = c(-1, 0, 1), labels = c(-1, 0, 1), limits = c(-1, 1)) + 
+    coord_flip() + 
+    facet_wrap(~metric, scales = &#39;free&#39;, ncol = 3) + 
+    theme_bw() + 
+    theme(axis.ticks = element_blank(),
+          axis.text.y = element_blank(),
+          strip.background = element_rect(fill = NA),
+          panel.grid = element_blank(),
+          legend.position = c(.39, .3),
+          legend.key.size = unit(.2, &#39;cm&#39;),
+          legend.text = element_text(size = 8),
+          legend.spacing.y = unit(0, &#39;pt&#39;),
+          legend.title = element_blank(),
+          text = element_text(size = 14))
+
+p3</code></pre>
+<div class="figure"><span style="display:block;" id="fig:correlations"></span>
+<img src="{{< blogdown/postref >}}index_files/figure-html/correlations-1.png" alt="Participant-level correlations between subjective arousal, tendency to think about the future, and heartrate. Bayes factors and p values characterize a one-sample t test against zero." width="100%" />
+<p class="caption">
+Figure 4: Participant-level correlations between subjective arousal, tendency to think about the future, and heartrate. Bayes factors and p values characterize a one-sample t test against zero.
+</p>
+</div>
+<p>We can see that, for just about all participants, ratings of subjective arousal
+are largely unrelated to their average heart rate. We can also see that, for
+many participants, thinking about the future was associated with higher
+subjective arousal ratings. This makes sense if thinking about the future is
+energizing or stressful.</p>
+</div>
+<div id="interoceptive-sensitivity-to-cardiac-signals-is-stronger-during-states-of-lower-subjective-arousal" class="section level3">
+<h3>2. Interoceptive sensitivity to cardiac signals is stronger during states of lower subjective arousal</h3>
+<p>To assess whether interoception to cardiac signals changes based on subjective arousal, we examined the results of the cluster-based permutation test, and found one significant cluster. This cluster occurred largely over frontal electrodes about 350 ms post heartbeat.</p>
+</div>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>Pang, J., Tang, X., Li, H., Hu, Q., Cui, H., Zhang, L., Li, W., Zhu, Z., Wang, J., &amp; Li, C. (2019). Altered Interoceptive Processing in Generalized Anxiety Disorder—A Heartbeat-Evoked Potential Research. Frontiers in Psychiatry, 10, 616. <a href="https://doi.org/10.3389/fpsyt.2019.00616" class="uri">https://doi.org/10.3389/fpsyt.2019.00616</a><a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>Coll, M.-P., Hobson, H., Bird, G., &amp; Murphy, J. (2021). Systematic review and meta-analysis of the relationship between the heartbeat-evoked potential and interoception. Neuroscience &amp; Biobehavioral Reviews, 122, 190–200. <a href="https://doi.org/10.1016/j.neubiorev.2020.12.012" class="uri">https://doi.org/10.1016/j.neubiorev.2020.12.012</a><a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+<li id="fn3"><p>Fourcade, A., Klotzsche, F., Hofmann, S. M., Mariola, A., Nikulin, V. V., Villringer, A., &amp; Gaebler, M. (2024). Linking brain–heart interactions to emotional arousal in immersive virtual reality. Psychophysiology, e14696. <a href="https://doi.org/10.1111/psyp.14696" class="uri">https://doi.org/10.1111/psyp.14696</a><a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+<li id="fn4"><p>Kucyi, A., Kam, J. W. Y., Andrews-Hanna, J. R., Christoff, K., &amp; Whitfield-Gabrieli, S. (2023). Recent advances in the neuroscience of spontaneous and off-task thought: Implications for mental health. Nature Mental Health, 1(11), 827–840. <a href="https://doi.org/10.1038/s44220-023-00133-w" class="uri">https://doi.org/10.1038/s44220-023-00133-w</a><a href="#fnref4" class="footnote-back">↩︎</a></p></li>
+<li id="fn5"><p>Park, H.-D., &amp; Blanke, O. (2019). Heartbeat-evoked cortical responses: Underlying mechanisms, functional roles, and methodological considerations. NeuroImage, 197, 502–511. <a href="https://doi.org/10.1016/j.neuroimage.2019.04.081" class="uri">https://doi.org/10.1016/j.neuroimage.2019.04.081</a><a href="#fnref5" class="footnote-back">↩︎</a></p></li>
+</ol>
+</div>
