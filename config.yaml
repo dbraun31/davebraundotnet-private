@@ -15,14 +15,14 @@ menu:
     - name: Publications
       url: /publications/
     - name: Projects
-      url: https://twitter.com/rstudio
+      url: /#results
     - name: Contact
-      url: https://google.com
+      url: /#contact
 params:
     MathJaxCDN: //cdnjs.cloudflare.com/ajax/libs
     MathJaxVersion: 2.7.5
     headliner: Hi, I'm Dave
-    description: "Postdoc and aspiring data scientist. Published in neuroscience and population health. Happiest when I'm using cool stats stuff to solve meaningful problems."
+    description: "Researcher who's published in both neuroscience and population health. Happiest when I'm using cool stats stuff to solve meaningful problems."
     socials: 
         - name: Resume
           url: https://davebraun.net/resume
@@ -33,18 +33,18 @@ params:
         - name: Google Scholar
           url: https://scholar.google.com/citations?user=ub5NLqcAAAAJ&hl=en&oi=sra
     favicon: favicon.ico
-    contact: You can write me an [email](mailto:dbraun31@gmail.com).
+    contact: You can write me an email at dbraun31 at gmail.
     highlightjsCDN: //cdnjs.cloudflare.com/ajax/libs
     highlightjsLang:
         - r
         - yaml
     highlightjsTheme: github
-    css: ['css/override.css']
+    css: ['css/override.css?v=1']
     highlightjsVersion: 9.12.0
     logo:
         alt: Logo
         height: 50
-        url: /logo.png
+        url: /images/logo.png
         width: 50
 markup:
   defaultMarkdownHandler: goldmark

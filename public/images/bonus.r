@@ -86,16 +86,13 @@ d %>%
           panel.border = element_blank(),
           plot.tag.position = c(.002, 1),
           plot.tag = element_text(size = 10),
-          panel.background = element_rect(fill = 'transparent', color = NA),
+          panel.background = element_rect(fill = '#fdfcf9', color = NA),
           plot.margin = unit(c(0, 0, 0, 0), 'pt'))
 
 ggsave('static/images/about_background.png', height = 1440, width = 2560, units = 'px', dpi = 300)
 
 
 
-
-g <- gridExtra::grid.arrange(p1, p2, nrow = 2)
-ggsave('efficacy_two.png', g, height = 3.91, width = 3.09, units = 'in', dpi = 300)
 
 
 

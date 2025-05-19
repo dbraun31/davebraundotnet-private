@@ -1,7 +1,7 @@
 ---
 title: "Does the brain cope with anxiety by numbing out?"
 summary: We found that the brain is less sensitive to signals from the heart (a key dynamic for emotional processing) during highly energized states---an effect that was more pronounced for those high in anxiety. In this post, I walk through a really cool whole-brain analysis I used to uncover this effect.
-date: "2025-04-25T13:09:13-06:00"
+date: "2025-04-24T13:09:13-06:00"
 image: "/images/1.jpg"
 skills:
     - Python
@@ -23,8 +23,8 @@ knitr::opts_chunk$set(collapse = TRUE, cache=FALSE, out.width="100%")
 
 
 {{% highlightbox %}}
-📄 [Read the Paper]('#')  
-🖼 [View the Poster]('#')
+📄 <a href="https://doi.org/10.1101/2025.03.26.645574" target="_blank">Read the Paper</a>  
+🖼 <a href="/assets/Braun_HEP_CNS.pdf" target="_blank">View the Poster</a>
 
 ### TL;DR 
 I used EEG and unsupervised machine learning techniques to analyze how
@@ -55,6 +55,7 @@ that your brain might subconsciously be trying to avoid anxiety as well.
 
 ```{r fig.cap="Distraction is an easy way to avoid feeling anxiety.", echo=FALSE, fig.align='center', out.width="55%"}
 knitr::include_graphics("distraction.png")
+getwd()
 ```
 
 ## <u>What we were interested in </u>
@@ -113,7 +114,7 @@ placed on participants' back (ECG) to measure their heartbeat activity (see
 
 ```{r eeg, fig.cap="(A) Cartoonized illustration of EEG cap and (B) placement of EEG electrodes in the experiment according to the 10-20 coordinate system", echo=FALSE}
 
-knitr::include_graphics('eeg_cap.jpg')
+knitr::include_graphics('cap_sensors.png')
 
 ```
 
@@ -590,14 +591,14 @@ print(g)
 
 ```
 
-Figure \@ref(fig:clusterresult) highlights the significant cluster from the cluster-based permutation analysis. We can see that, on average, EEG voltage was higher (ie, stronger interoception) prior to lower ratings of subjective arousal. This suggests that participants were more sensitive to cardiac signals during periods of lower subjective arousal. 
+*Figure* \@ref(fig:clusterresult) highlights the significant cluster from the cluster-based permutation analysis. We can see that, on average, EEG voltage was higher (ie, stronger interoception) prior to lower ratings of subjective arousal. This suggests that participants were more sensitive to cardiac signals during periods of lower subjective arousal. 
 
 
 ### 3. The link between interoceptive sensitivity and subjective arousal was amplified for those high in state anxiety
 
 Given the strong links between anxiety and interoception[^anx], we next wanted to look at how this HEP effect we found might be different for those with low vs. high anxiety. At the beginning of the experiment, we collected measures of both trait anxiety (ie, how much anxiety one experiences generally) and state anxiety (ie, how much anxiety one is experience while completing the survey).
 
-If I were to plot that significant green window in *Figure* \@ref(fig:cluster_result) for each participant, we would see that each participant is different with respect to how strong their link is between interoception and subjective arousal (ie, their HEP effect). We wanted to know whether these differences could be explained by differences in state or trait anxiety.
+If I were to plot that significant green window in *Figure* \@ref(fig:clusterresult) for each participant, we would see that each participant is different with respect to how strong their link is between interoception and subjective arousal (ie, their HEP effect). We wanted to know whether these differences could be explained by differences in state or trait anxiety.
 
 So, for each participant, I calculated their average HEP effect and correlated it with their anxiety measures:
 
@@ -684,7 +685,7 @@ p2 <- d %>%
     group_by(subject, time, condition, stai_d) %>% 
     summarize(voltage_ = mean(voltage)) %>%  
     group_by(time, condition, stai_d) %>% 
-    summarize(voltage = mean(voltage_), se = sd(voltage_) / n()) %>% 
+    summarize(voltage = mean(voltage_), se = sd(voltage_) / sqrt(n())) %>% 
     mutate(stai_d = factor(stai_d, levels = c('Low state anxiety', 'High state anxiety'))) %>% 
     ggplot(aes(x = time, y = voltage)) + 
     geom_ribbon(aes(ymin = voltage - se, ymax = voltage + se, fill = condition), alpha = .3) +
@@ -712,7 +713,7 @@ print(g)
 
 ```
 We can see that for state (but not trait) anxiety, there is a significant,
-positive correlation with HEP effect size (*Figure* \@ref(fig:anxietycor)). This
+positive correlation with HEP effect size (<i>Figure</i> \@ref(fig:anxietycor)). This
 suggests that, as people are feeling more anxious in the moment, their
 sensitivity to cardiac signals is more coupled with their momentary changes in
 subjective arousal.
@@ -756,4 +757,3 @@ understanding not just anxiety, but how we can better support mental health in
 everyday life.
 
 [Back to homepage.](https://davebraun.net)
-small change

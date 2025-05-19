@@ -1,7 +1,7 @@
 ---
 title: "Does the brain cope with anxiety by numbing out?"
 summary: We found that the brain is less sensitive to signals from the heart (a key dynamic for emotional processing) during highly energized states---an effect that was more pronounced for those high in anxiety. In this post, I walk through a really cool whole-brain analysis I used to uncover this effect.
-date: "2025-04-25T13:09:13-06:00"
+date: "2025-04-24T13:09:13-06:00"
 image: "/images/1.jpg"
 skills:
     - Python
@@ -15,8 +15,8 @@ output: bookdown::html_document2
 
 
 {{% highlightbox %}}
-📄 [Read the Paper]('#')  
-🖼 [View the Poster]('#')
+📄 <a href="https://doi.org/10.1101/2025.03.26.645574" target="_blank">Read the Paper</a>  
+🖼 <a href="/assets/Braun_HEP_CNS.pdf" target="_blank">View the Poster</a>
 
 ### TL;DR 
 I used EEG and unsupervised machine learning techniques to analyze how
@@ -49,6 +49,10 @@ that your brain might subconsciously be trying to avoid anxiety as well.
 <img src="distraction.png" alt="Distraction is an easy way to avoid feeling anxiety." width="55%" />
 <p class="caption"><span id="fig:unnamed-chunk-1"></span>Figure 1: Distraction is an easy way to avoid feeling anxiety.</p>
 </div>
+
+```
+## [1] "/home/dave/Dropbox/post_doc/professional/career/davebraundotnet/blogdown/content/post/hep"
+```
 
 ## <u>What we were interested in </u>
 ### We wanted to look at how the brain responds to heartbeats across different states of anxiety and energy
@@ -105,7 +109,7 @@ placed on participants' back (ECG) to measure their heartbeat activity (see
 *Figure* <a href="#fig:eeg">2</a>).
 
 <div class="figure">
-<img src="eeg_cap.jpg" alt="(A) Cartoonized illustration of EEG cap and (B) placement of EEG electrodes in the experiment according to the 10-20 coordinate system" width="100%" />
+<img src="cap_sensors.png" alt="(A) Cartoonized illustration of EEG cap and (B) placement of EEG electrodes in the experiment according to the 10-20 coordinate system" width="100%" />
 <p class="caption"><span id="fig:eeg"></span>Figure 2: (A) Cartoonized illustration of EEG cap and (B) placement of EEG electrodes in the experiment according to the 10-20 coordinate system</p>
 </div>
 
@@ -522,12 +526,6 @@ p3 <- sd %>%
           legend.spacing.y = unit(0, 'pt'),
           legend.title = element_blank(),
           text = element_text(size = 14))
-## Warning: A numeric `legend.position` argument in `theme()` was deprecated in ggplot2
-## 3.5.0.
-## ℹ Please use the `legend.position.inside` argument of `theme()` instead.
-## This warning is displayed once every 8 hours.
-## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-## generated.
 
 p3
 ```
@@ -571,11 +569,6 @@ topo <- plot_topo(m, cluster_id, n_breaks = 1, nrow = 1)
 ## Joining with `by = join_by(channel)`
 ## Warning in geom_topo(chan_markers = "text", aes(fill = t_statistic, label =
 ## electrode)): Ignoring unknown aesthetics: label
-## Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
-## ℹ Please use `linewidth` instead.
-## This warning is displayed once every 8 hours.
-## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-## generated.
 ## Warning in geom_topo(chan_markers = "text", aes(fill = t_statistic, label = electrode)): Ignoring unknown aesthetics: fill and label
 ## Ignoring unknown aesthetics: fill and label
 ## Ignoring unknown aesthetics: fill and label
@@ -637,40 +630,6 @@ ts <- pd %>%
 
 
 g <- ggarrange(ts, topo, labels = c('A.', 'B.'), nrow=2)
-## Warning: The following aesthetics were dropped during statistical transformation: label.
-## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-##   the data.
-## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-##   variable into a factor?
-## Warning: The following aesthetics were dropped during statistical transformation: fill
-## and label.
-## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-##   the data.
-## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-##   variable into a factor?
-## The following aesthetics were dropped during statistical transformation: fill
-## and label.
-## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-##   the data.
-## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-##   variable into a factor?
-## The following aesthetics were dropped during statistical transformation: fill
-## and label.
-## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-##   the data.
-## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-##   variable into a factor?
-## Warning: The following aesthetics were dropped during statistical transformation: fill.
-## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-##   the data.
-## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-##   variable into a factor?
-## Warning: The following aesthetics were dropped during statistical transformation: fill
-## and label.
-## ℹ This can happen when ggplot fails to infer the correct grouping structure in
-##   the data.
-## ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-##   variable into a factor?
 print(g)
 ```
 
@@ -679,14 +638,14 @@ print(g)
 <p class="caption"><span id="fig:clusterresult"></span>Figure 6: Main result of cluster-based permutation analysis. (A) The grand averaged timeseries of EEG voltage timelocked to the heartbeat (ie, the HEP). Blue dashed rectangle highlights the time points that were analyzed in the cluster test. Green shaded area highlights the significant cluster. (B) Topographical heat map of t values during the significant time window (at time point 0.328 s post heartbeat). The significant cluster centers on frontal electrodes.</p>
 </div>
 
-Figure <a href="#fig:clusterresult">6</a> highlights the significant cluster from the cluster-based permutation analysis. We can see that, on average, EEG voltage was higher (ie, stronger interoception) prior to lower ratings of subjective arousal. This suggests that participants were more sensitive to cardiac signals during periods of lower subjective arousal. 
+*Figure* <a href="#fig:clusterresult">6</a> highlights the significant cluster from the cluster-based permutation analysis. We can see that, on average, EEG voltage was higher (ie, stronger interoception) prior to lower ratings of subjective arousal. This suggests that participants were more sensitive to cardiac signals during periods of lower subjective arousal. 
 
 
 ### 3. The link between interoceptive sensitivity and subjective arousal was amplified for those high in state anxiety
 
 Given the strong links between anxiety and interoception[^anx], we next wanted to look at how this HEP effect we found might be different for those with low vs. high anxiety. At the beginning of the experiment, we collected measures of both trait anxiety (ie, how much anxiety one experiences generally) and state anxiety (ie, how much anxiety one is experience while completing the survey).
 
-If I were to plot that significant green window in *Figure* \@ref(fig:cluster_result) for each participant, we would see that each participant is different with respect to how strong their link is between interoception and subjective arousal (ie, their HEP effect). We wanted to know whether these differences could be explained by differences in state or trait anxiety.
+If I were to plot that significant green window in *Figure* <a href="#fig:clusterresult">6</a> for each participant, we would see that each participant is different with respect to how strong their link is between interoception and subjective arousal (ie, their HEP effect). We wanted to know whether these differences could be explained by differences in state or trait anxiety.
 
 So, for each participant, I calculated their average HEP effect and correlated it with their anxiety measures:
 
@@ -777,7 +736,7 @@ p2 <- d %>%
     group_by(subject, time, condition, stai_d) %>% 
     summarize(voltage_ = mean(voltage)) %>%  
     group_by(time, condition, stai_d) %>% 
-    summarize(voltage = mean(voltage_), se = sd(voltage_) / n()) %>% 
+    summarize(voltage = mean(voltage_), se = sd(voltage_) / sqrt(n())) %>% 
     mutate(stai_d = factor(stai_d, levels = c('Low state anxiety', 'High state anxiety'))) %>% 
     ggplot(aes(x = time, y = voltage)) + 
     geom_ribbon(aes(ymin = voltage - se, ymax = voltage + se, fill = condition), alpha = .3) +
@@ -804,10 +763,8 @@ p2 <- d %>%
     
 g <- ggarrange(p1, p2, labels = c('A.', 'B.'), nrow = 2)
 ## `geom_smooth()` using formula = 'y ~ x'
-## Warning: Removed 2 rows containing non-finite outside the scale range
-## (`stat_smooth()`).
-## Warning: Removed 2 rows containing missing values or values outside the scale range
-## (`geom_point()`).
+## Warning: Removed 2 rows containing non-finite values (`stat_smooth()`).
+## Warning: Removed 2 rows containing missing values (`geom_point()`).
     
 
 print(g)
@@ -818,7 +775,7 @@ print(g)
 <p class="caption"><span id="fig:anxietycor"></span>Figure 7: Participant-level associations between HEP effect size and self-reported anxiety ratings. (A) Correlations with HEP effect size for both state (left) and trait (right) anxiety. (B) EEG grand averaged timeseries broken by a median split on state anxiety.</p>
 </div>
 We can see that for state (but not trait) anxiety, there is a significant,
-positive correlation with HEP effect size (*Figure* <a href="#fig:anxietycor">7</a>). This
+positive correlation with HEP effect size (<i>Figure</i> <a href="#fig:anxietycor">7</a>). This
 suggests that, as people are feeling more anxious in the moment, their
 sensitivity to cardiac signals is more coupled with their momentary changes in
 subjective arousal.
@@ -862,4 +819,3 @@ understanding not just anxiety, but how we can better support mental health in
 everyday life.
 
 [Back to homepage.](https://davebraun.net)
-small change
