@@ -12,13 +12,7 @@ read_time: 10
 output: bookdown::html_document2
 ---
 
-```{r setup, include=FALSE}
-library(tidyverse)
-library(RColorBrewer)
-library(paletteer)
-knitr::opts_chunk$set(collapse = TRUE, cache=FALSE, out.width="100%")
-pal <- paletteer_d('severance::Hell')
-```
+
 
 
 {{% highlightbox %}}
@@ -92,9 +86,10 @@ NPIs---could improve predictions of infectious disease spread.
 
 
 
-```{r fig.cap="Can we better predict the spread of disease if we can measure how many people are wearing masks or social distancing?", echo=FALSE, fig.align='center', out.width="100%"}
-knitr::include_graphics("masked_crowd.jpg")
-```
+<div class="figure" style="text-align: center">
+<img src="masked_crowd.jpg" alt="Can we better predict the spread of disease if we can measure how many people are wearing masks or social distancing?" width="100%" />
+<p class="caption"><span id="fig:unnamed-chunk-1"></span>Figure 1: Can we better predict the spread of disease if we can measure how many people are wearing masks or social distancing?</p>
+</div>
 
 Whether people are adhering to NPIs is a tricky thing to measure. 
 
