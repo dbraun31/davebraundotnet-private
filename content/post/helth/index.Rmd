@@ -2,7 +2,7 @@
 title: "How perceptions of community behavior improve COVID-19 predictions"
 summary: "Can crowdsourced perceptions improve pandemic forecasting? In this project, I explore how reports of community compliance with public health measures shaped COVID-19 spread—and highlight a powerful Bayesian model we used to predict future case trends."
 date: "2022-03-20"
-image: "/images/metal_ball.png?v=1"
+image: "/images/metal_ball.png?v=2"
 skills:
     - Time-series forecasting
     - Bayesian modeling
