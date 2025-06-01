@@ -39,7 +39,7 @@ params:
         - r
         - yaml
     highlightjsTheme: github
-    css: ['css/override.css?v=1']
+    css: ['css/override.css?v=10']
     highlightjsVersion: 9.12.0
     logo:
         alt: Logo
