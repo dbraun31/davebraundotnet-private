@@ -56,7 +56,7 @@ How to turn crowdsourced human behavior data into probabilistic forecasts using 
 
 ### What if we could improve pandemic forecasting by asking people how well their neighbors are following the rules?
 
-Modeling the path of an infectious disease is a popular and important area of
+Modeling the path of infectious diseases is a popular and important area of
 research,[^1]<sup>,</sup>[^2] hugely supporting public health
 situational awareness during a pandemic.[^3]<sup>,</sup>[^4]
 Most models of infectious disease are purely *computational*, meaning they rely
@@ -94,6 +94,11 @@ predictions the most.
 
 ### We asked a crowd 21 questions about their community’s compliance with NPIs over 35 weeks and tested whether their responses improved COVID-19 case forecasts
 
+Each week during the COVID-19 pandemic—from August 2020 through April
+2021—we sent surveys to people across the US asking them 21 core questions
+about how well their communities were complying with the CDC’s NPI regulations
+(see *Figure @ref(fig: survey)*).
+
 <div class="figure">
 
 <div class="reactable html-widget html-fill-item" id="htmlwidget-1" style="width:auto;height:auto;"></div>
@@ -101,10 +106,69 @@ predictions the most.
 
 <p class="caption">
 
-<span id="fig:unnamed-chunk-2"></span>Figure 2: The 21 survey questions posed to the crowd. Responses were on a Likert scale from 0% to 100% in increments of 20. Participants also had the option of selecting ‘Don’t know’.
+<span id="fig:survey"></span>Figure 2: The 21 survey questions posed to the crowd. Responses were on a Likert scale from 0% to 100% in increments of 20. Participants also had the option of selecting ‘Don’t know’.
 </p>
 
 </div>
+
+We collected a total of 10,852 survey responses across three different survey
+platforms. These responses were evenly distributed over time and roughly
+geographically representative of the US population (see *Figure
+<a href="#fig:responses"><strong>??</strong></a>*).
+
+``` r
+
+dates <- unique(d$year_month_day)
+dates <- dates[order(unique(d$mw))]
+dates <- ifelse((seq_along(dates)+3) %% 4 == 0, dates, "")
+
+d %>% 
+    group_by(mw, survey_platform) %>% 
+    summarize(year_month_day = unique(year_month_day),
+              count = length(unique(id))) %>% 
+    mutate(survey_platform = recode(survey_platform, `sm_volunteer` = 'Platform A',
+                                    `sm_paid` = 'Platform B', `pollfish` = 'Platform C')) %>% 
+    ggplot(aes(x = reorder(year_month_day, mw), y = count, 
+               color=survey_platform, group=survey_platform)) + 
+    geom_line() + 
+    geom_point() +
+    labs(
+        x = 'Date',
+        y = 'Number of responses',
+        color = 'Survey platform'
+    ) + 
+    ylim(0, 450) +
+    scale_x_discrete(labels = dates, breaks = dates) +
+    scale_color_manual(values = qual[c(1, 4, 5)]) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = c(.8, .8))
+## `summarise()` has grouped output by 'mw'. You can override using the `.groups`
+## argument.
+```
+
+<img src="{{< blogdown/postref >}}index_files/figure-html/responses-1.png" width="100%" />
+
+``` r
+
+
+census %>% 
+    mutate(state_title = str_to_title(state),
+           expected = pop_prop * N) %>% 
+    relocate(expected, .after = observed) %>% 
+    mutate(diff = abs(observed - expected)) %>% 
+    mutate(outlier = ifelse(diff > quantile(diff, probs = .9), 'yes', 'no')) %>% 
+    mutate(outlier_label = ifelse(outlier == 'yes', state_title, NA)) %>% 
+    ggplot(aes(x = expected, y = observed)) + 
+    geom_abline(slope = 1, intercept = 0, linetype = 'dashed') + 
+    geom_point(aes(color = outlier)) + 
+    ggrepel::geom_label_repel(aes(label = outlier_label)) +
+    ylim(0, 1200) + 
+    xlim(0, 1200)
+## Warning: Removed 46 rows containing missing values (`geom_label_repel()`).
+```
+
+<img src="{{< blogdown/postref >}}index_files/figure-html/responses-2.png" width="100%" />
 
 [^1]: Chelsea S Lutz, Mimi P Huynh, Monica Schroeder, Sophia Anyatonwu, F Scott Dahlgren, Gregory Danyluk, Danielle Fernandez, Sharon K Greene, Nodar Kipshidze, Leann Liu, et al. Applying infectious disease forecasting to public health: a path forward using influenza forecasting examples. BMC Public Health, 19(1):1–12, 2019.
 

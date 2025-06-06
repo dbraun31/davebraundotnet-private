@@ -18,9 +18,45 @@ library(RColorBrewer)
 library(paletteer)
 library(DT)
 library(reactable)
+library(scales)
 knitr::opts_chunk$set(collapse = TRUE, cache=FALSE, out.width="100%")
-pal <- paletteer_d('severance::Hell')
+qual <- paletteer_d('nord::aurora')
+sequ <- colorRampPalette(paletteer_d('nord::silver_mine'))(100)
 d <- read.csv('post_data/covid_perceptions.csv')
+census <- read.csv('post_data/nst-est2019-alldata.csv')
+
+# --- FORMAT DATA --- #
+exclude <- c('', 'district of columbia', 'unknown', 'other (please specify)')
+colnames(census) <- tolower(colnames(census))
+census <- census %>% 
+    select(name, popestimate2019) %>% 
+    rename(state=name) %>% 
+    mutate(state = tolower(state))
+d <- d %>% 
+    mutate(id = 1:nrow(.)) %>% 
+    relocate(id, .before = start.date) %>% 
+    select(-respondent.id) %>% 
+    gather(question, response, q1:q44) %>% 
+    filter(question %in% paste0('q', 1:21), 
+           !state %in% exclude) %>% 
+    filter(!is.na(response)) %>% 
+    mutate(question = as.integer(str_replace(question, 'q', '')),
+           response = as.integer(response)) 
+uspop <- sum(census[census$state %in% unique(d$state),]$popestimate2019)
+census <- census %>% 
+    mutate(pop_prop = census$popestimate2019 / uspop) %>% 
+    filter(state %in% unique(d$state)) 
+
+# Make observed state proportions
+N <- length(unique(d$id))
+census <- d %>% 
+    group_by(state, id) %>% 
+    summarize(n()) %>% 
+    group_by(state) %>% 
+    summarize(observed = n()) %>% 
+    mutate(obs_prop = observed / N) %>% 
+    inner_join(census)
+    
 ```
 
 
@@ -56,7 +92,7 @@ How to turn crowdsourced human behavior data into probabilistic forecasts using 
 
 ### What if we could improve pandemic forecasting by asking people how well their neighbors are following the rules?
 
-Modeling the path of an infectious disease is a popular and important area of
+Modeling the path of infectious diseases is a popular and important area of
 research,[^model1]<sup>,</sup>[^model2] hugely supporting public health
 situational awareness during a pandemic.[^important1]<sup>,</sup>[^important2]
 Most models of infectious disease are purely *computational*, meaning they rely
@@ -106,7 +142,12 @@ knitr::include_graphics("masked_crowd.jpg")
 ## <u> How we did it </u>
 ### We asked a crowd 21 questions about their community's compliance with NPIs over 35 weeks and tested whether their responses improved COVID-19 case forecasts
 
-```{r echo=FALSE, fig.cap="The 21 survey questions posed to the crowd. Responses were on a Likert scale from 0% to 100% in increments of 20. Participants also had the option of selecting 'Don't know'."}
+Each week during the COVID-19 pandemic---from August 2020 through April
+2021---we sent surveys to people across the US asking them 21 core questions
+about how well their communities were complying with the CDC's NPI regulations
+(see *Figure \@ref(fig: survey)*). 
+
+```{r survey, echo=FALSE, fig.cap="The 21 survey questions posed to the crowd. Responses were on a Likert scale from 0% to 100% in increments of 20. Participants also had the option of selecting 'Don't know'."}
 qs <- read.csv('post_data/question_coding.csv')
 colnames(qs) <- c('drop', 'drop', 'Preface', 'Question')
 
@@ -145,6 +186,85 @@ reactable(
 )
 
 ```
+
+
+We collected a total of 10,852 survey responses across three different survey
+platforms. These responses were evenly distributed over time and roughly
+geographically representative of the US population (see *Figure
+\@ref(fig:responses)*).
+
+```{r responses, fig.cap=""}
+
+dates <- unique(d$year_month_day)
+dates <- dates[order(unique(d$mw))]
+dates <- ifelse((seq_along(dates)+3) %% 4 == 0, dates, "")
+
+d %>% 
+    group_by(mw, survey_platform) %>% 
+    summarize(year_month_day = unique(year_month_day),
+              count = length(unique(id))) %>% 
+    mutate(survey_platform = recode(survey_platform, `sm_volunteer` = 'Platform A',
+                                    `sm_paid` = 'Platform B', `pollfish` = 'Platform C')) %>% 
+    ggplot(aes(x = reorder(year_month_day, mw), y = count, 
+               color=survey_platform, group=survey_platform)) + 
+    geom_line() + 
+    geom_point() +
+    labs(
+        x = 'Date',
+        y = 'Number of responses',
+        color = 'Survey platform'
+    ) + 
+    ylim(0, 450) +
+    scale_x_discrete(labels = dates, breaks = dates) +
+    scale_color_manual(values = qual[c(1, 4, 5)]) + 
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = c(.8, .8))
+
+
+census %>% 
+    mutate(state_title = str_to_title(state),
+           expected = pop_prop * N) %>% 
+    relocate(expected, .after = observed) %>% 
+    mutate(diff = abs(observed - expected)) %>% 
+    mutate(outlier = ifelse(diff > quantile(diff, probs = .9), 'yes', 'no')) %>% 
+    mutate(outlier_label = ifelse(outlier == 'yes', state_title, NA)) %>% 
+    ggplot(aes(x = expected, y = observed)) + 
+    geom_abline(slope = 1, intercept = 0, linetype = 'dashed') + 
+    geom_point(aes(color = outlier)) + 
+    ggrepel::geom_label_repel(aes(label = outlier_label)) +
+    ylim(0, 1200) + 
+    xlim(0, 1200)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
