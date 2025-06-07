@@ -16,7 +16,9 @@ output: bookdown::html_document2
 library(tidyverse)
 library(RColorBrewer)
 library(paletteer)
+library(plotly)
 library(DT)
+library(ggpubr)
 library(reactable)
 library(scales)
 knitr::opts_chunk$set(collapse = TRUE, cache=FALSE, out.width="100%")
@@ -145,7 +147,7 @@ knitr::include_graphics("masked_crowd.jpg")
 Each week during the COVID-19 pandemic---from August 2020 through April
 2021---we sent surveys to people across the US asking them 21 core questions
 about how well their communities were complying with the CDC's NPI regulations
-(see *Figure \@ref(fig: survey)*). 
+(see *Figure \@ref(fig:survey)*). 
 
 ```{r survey, echo=FALSE, fig.cap="The 21 survey questions posed to the crowd. Responses were on a Likert scale from 0% to 100% in increments of 20. Participants also had the option of selecting 'Don't know'."}
 qs <- read.csv('post_data/question_coding.csv')
@@ -190,23 +192,25 @@ reactable(
 
 We collected a total of 10,852 survey responses across three different survey
 platforms. These responses were evenly distributed over time and roughly
-geographically representative of the US population (see *Figure
-\@ref(fig:responses)*).
+geographically representative of the US population (see *Figures
+\@ref(fig:responses) and \@ref(fig:geography)*).
 
-```{r responses, fig.cap=""}
+```{r responses, fig.cap="Data collected across three survey platforms over time."}
 
 dates <- unique(d$year_month_day)
 dates <- dates[order(unique(d$mw))]
 dates <- ifelse((seq_along(dates)+3) %% 4 == 0, dates, "")
 
-d %>% 
+p1 <- d %>% 
     group_by(mw, survey_platform) %>% 
     summarize(year_month_day = unique(year_month_day),
               count = length(unique(id))) %>% 
     mutate(survey_platform = recode(survey_platform, `sm_volunteer` = 'Platform A',
                                     `sm_paid` = 'Platform B', `pollfish` = 'Platform C')) %>% 
     ggplot(aes(x = reorder(year_month_day, mw), y = count, 
-               color=survey_platform, group=survey_platform)) + 
+               color=survey_platform, group=survey_platform,
+           text=paste0('Date: ', year_month_day, '<br>Number of responses: ', count,
+                       '<br>Survey platform: ', survey_platform))) + 
     geom_line() + 
     geom_point() +
     labs(
@@ -219,10 +223,26 @@ d %>%
     scale_color_manual(values = qual[c(1, 4, 5)]) + 
     theme_bw() + 
     theme(axis.text.x = element_text(angle = 45, hjust = 1),
-          legend.position = c(.8, .8))
+          legend.position = 'bottom',
+          text = element_text(size = 16))
 
 
-census %>% 
+pp1 <- ggplotly(p1, tooltip='text')
+pp1 %>%
+    layout(
+        legend = list(
+          orientation = "h",  # horizontal legend
+          x = 0.5,            # centered horizontally
+          xanchor = "center",
+          y = -0.5,           # move below the plot area
+          yanchor = "top"
+        )
+      )
+```
+
+
+```{r geography, fig.cap="Actual vs. expected number of responses by state."}
+p2 <- census %>% 
     mutate(state_title = str_to_title(state),
            expected = pop_prop * N) %>% 
     relocate(expected, .after = observed) %>% 
@@ -231,14 +251,26 @@ census %>%
     mutate(outlier_label = ifelse(outlier == 'yes', state_title, NA)) %>% 
     ggplot(aes(x = expected, y = observed)) + 
     geom_abline(slope = 1, intercept = 0, linetype = 'dashed') + 
-    geom_point(aes(color = outlier)) + 
-    ggrepel::geom_label_repel(aes(label = outlier_label)) +
+    geom_point(aes(color = outlier,
+                   text = paste0('Expected: ', round(expected), '<br>Observed: ', observed,
+                                 '<br>State: ', state_title))) + 
+    geom_text(aes(label = outlier_label, text = NULL), nudge_y = 40) +
     ylim(0, 1200) + 
-    xlim(0, 1200)
+    xlim(0, 1200) + 
+    labs(
+        x = 'Expected',
+        y = 'Observed'
+    ) +
+    scale_color_manual(values = c(`no` = qual[1], `yes` = qual[3])) + 
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = 'none',
+          text = element_text(size = 16))
 
+pp2 <- ggplotly(p2, tooltip='text')
+pp2
 ```
-
-
 
 
 
