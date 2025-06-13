@@ -16,11 +16,11 @@
       <description>We found that the brain is less sensitive to signals from the heart (a key dynamic for emotional processing) during highly energized states&amp;mdash;an effect that was more pronounced for those high in anxiety. In this post, I walk through a really cool whole-brain analysis I used to uncover this effect.</description>
     </item>
     <item>
-      <title>How perceptions of community behavior improve COVID-19 predictions</title>
-      <link>//localhost:4321/2022/03/20/how-perceptions-of-community-behavior-improve-covid-19-predictions/</link>
+      <title>Forecasting COVID with a little help from your neighbors.</title>
+      <link>//localhost:4321/2022/03/20/forecasting-covid-with-a-little-help-from-your-neighbors./</link>
       <pubDate>Sun, 20 Mar 2022 00:00:00 +0000</pubDate>
-      <guid>//localhost:4321/2022/03/20/how-perceptions-of-community-behavior-improve-covid-19-predictions/</guid>
-      <description>Can crowdsourced perceptions improve pandemic forecasting? In this project, I explore how reports of community compliance with public health measures shaped COVID-19 spread—and highlight a powerful Bayesian model we used to predict future case trends.</description>
+      <guid>//localhost:4321/2022/03/20/forecasting-covid-with-a-little-help-from-your-neighbors./</guid>
+      <description>In this project, I dig into how people’s perceptions of their community’s COVID-19 precautions—like mask-wearing and social distancing—can actually improve case forecasts. By blending survey data with classic infectious disease models, we built a powerful Bayesian forecasting tool that shows just how much human judgment can add to the equation.</description>
     </item>
     <item>
       <title>About</title>

@@ -1,12 +1,11 @@
 ---
-title: "How perceptions of community behavior improve COVID-19 predictions"
-summary: "Can crowdsourced perceptions improve pandemic forecasting? In this project, I explore how reports of community compliance with public health measures shaped COVID-19 spread—and highlight a powerful Bayesian model we used to predict future case trends."
+title: "Forecasting COVID with a little help from your neighbors."
+summary: "In this project, I dig into how people’s perceptions of their community’s COVID-19 precautions—like mask-wearing and social distancing—can actually improve case forecasts. By blending survey data with classic infectious disease models, we built a powerful Bayesian forecasting tool that shows just how much human judgment can add to the equation."
 date: "2022-03-20"
 image: "/images/metal_ball.png?v=2"
 skills:
     - Time-series forecasting
     - Bayesian modeling
-    - Multimodal data integration
     - R, Python
 read_time: 10
 output: bookdown::html_document2
@@ -26,6 +25,10 @@ qual <- paletteer_d('nord::aurora')
 sequ <- colorRampPalette(paletteer_d('nord::silver_mine'))(100)
 d <- read.csv('post_data/covid_perceptions.csv')
 census <- read.csv('post_data/nst-est2019-alldata.csv')
+jhu <- read.csv('post_data/JHUCasesData.csv')
+coding <- read.csv('post_data/question_coding.csv')
+preds <- read.csv('post_data/all_predictions_for_all_questions.csv')
+wis <- read.csv('post_data/proportion_improved.csv')
 
 # --- FORMAT DATA --- #
 exclude <- c('', 'district of columbia', 'unknown', 'other (please specify)')
@@ -94,14 +97,16 @@ How to turn crowdsourced human behavior data into probabilistic forecasts using 
 
 ### What if we could improve pandemic forecasting by asking people how well their neighbors are following the rules?
 
-Modeling the path of infectious diseases is a popular and important area of
-research,[^model1]<sup>,</sup>[^model2] hugely supporting public health
-situational awareness during a pandemic.[^important1]<sup>,</sup>[^important2]
-Most models of infectious disease are purely *computational*, meaning they rely
-only on existing data found on the internet to support their predictions.
-[^computational1]<sup>,</sup>[^computational2] However, including data generated
-by humans has been proven to enhance forecasting infectious
-diseases.[^human1]<sup>,</sup>[^human2]<sup>,</sup>[^human3]<sup>,</sup>[^human4]
+Modeling the path of a fast-moving disease like COVID-19 is a popular and
+important area of research[^model1]<sup>,</sup>[^model2]. Infectious disease
+models have become essential tools for public health—helping experts make sense
+of what’s happening *now* and prepare for what might happen *next*.
+[^important1]<sup>,</sup>[^important2] Most of these models are purely
+*computational*---they crunch numbers from online data sources like case counts,
+hospitalizations, or mobility trends to make their best guess at the future.
+[^computational1]<sup>,</sup>[^computational2]
+
+**But human judgment can really boost predictive power.** Whether it's gut-level forecasts or indirect clues like social media posts, human behavior has a proven track record of boosting infectious disease predictions. [^human1]<sup>,</sup>[^human2]<sup>,</sup>[^human3]<sup>,</sup>[^human4] So we wondered: What if we tapped into something even simpler—people’s sense of whether their neighbors were actually following CDC guidelines? Could that kind of judgment help our models do a better job predicting where COVID-19 was headed?
 
 [^model1]:  Chelsea S Lutz, Mimi P Huynh, Monica Schroeder, Sophia Anyatonwu, F Scott Dahlgren, Gregory Danyluk, Danielle Fernandez, Sharon K Greene, Nodar Kipshidze, Leann Liu, et al. Applying infectious disease forecasting to public health: a path forward using influenza forecasting examples. BMC Public Health, 19(1):1–12, 2019.
 
@@ -123,7 +128,7 @@ diseases.[^human1]<sup>,</sup>[^human2]<sup>,</sup>[^human3]<sup>,</sup>[^human4
 
 [^human4]: Gabriel Recchia, Alexandra LJ Freeman, and David Spiegelhalter. How well did experts and laypeople forecast the size of the covid-19 pandemic? PloS one, 16(5):e0250935, 2021.
 
-> <p style="font-size: 1.5em;">Can we identify the most effective non-pharmaceutical interventions by seeing which ones most improve a model's ability to predict future cases?</p>
+> <p style="font-size: 1.5em;">Can people's perceptions of public health behavior help us figure out which COVID-19 interventions actually worked---and make our forecasts better in the process?</p>
 
 During the COVID-19 pandemic, the CDC issued many *non-pharmaceutical
 interventions* (NPIs), or behavior-based ways of mitigating the spread of the
@@ -144,7 +149,7 @@ knitr::include_graphics("masked_crowd.jpg")
 ## <u> How we did it </u>
 ### We asked a crowd 21 questions about their community's compliance with NPIs over 35 weeks and tested whether their responses improved COVID-19 case forecasts
 
-Each week during the COVID-19 pandemic---from August 2020 through April
+During the COVID-19 pandemic---from August 2020 through April
 2021---we sent surveys to people across the US asking them 21 core questions
 about how well their communities were complying with the CDC's NPI regulations
 (see *Figure \@ref(fig:survey)*). 
@@ -194,6 +199,8 @@ We collected a total of 10,852 survey responses across three different survey
 platforms. These responses were evenly distributed over time and roughly
 geographically representative of the US population (see *Figures
 \@ref(fig:responses) and \@ref(fig:geography)*).
+
+*You can interact with these plots!*
 
 ```{r responses, fig.cap="Data collected across three survey platforms over time."}
 
@@ -258,8 +265,8 @@ p2 <- census %>%
     ylim(0, 1200) + 
     xlim(0, 1200) + 
     labs(
-        x = 'Expected',
-        y = 'Observed'
+        x = 'Expected responses',
+        y = 'Observed responses'
     ) +
     scale_color_manual(values = c(`no` = qual[1], `yes` = qual[3])) + 
     theme_bw() +
@@ -275,23 +282,262 @@ pp2
 
 
 
+### We used perceptions of community behavior to predict COVID-19 cases
+
+So, in total, we have 10,852 survey responses, each containing answers to 21 questions about community adherence to NPIs over 35 weeks during the COVID-19 pandemic. We took two approaches to making better COVID-19 predictions based on these responses.
+
+**Correlations**
+
+We first looked at correlations between each question and incident (ie, new) COVID-19 from 0 - 4 weeks ahead. These correlations gave us a basic sense of which community behavior might be most important in predicting future cases---a great starting point.
+
+**Probabilistic forecasting**
+
+Correlations are great, but they don't give us a predicted number of cases on a
+future date, which is the type of information that decision makers like CDC
+would need to support situational awareness during a pandemic. Enter
+*probabilistic forecasting*.
+
+Probabilistic forecasts can take in everything we know about previous cases and people's sense of what's happening in their community, and they can spit out a *specific number* of COVID-19 cases to expect on a future date. Even better than that, they can estimate the *uncertainty* around the prediction, which is really important! Imagine our model tells us to expect 1,000 new COVID-cases next week. It's a huge difference if the uncertainty around that perception says 1,000 new cases give or take 10 cases (very precise!), or 1,000 new cases give or take 1,000 (pretty much useless!).
+
+We tried three different approaches to probabilistic forecasting:
+
+* **Baseline model**: This is what it sounds like. This model includes *no* information from our surveys about community NPI compliance; it only relies on previous case counts to predict future cases. This is often used as a "first guess" in many modeling applications, and so it serves as our baseline or control approach here. If including community compliance data can't beat this model, this data may not be useful after all.
+
+* **Single question model**: To predict future COVID-19 cases, this model takes into account all previous case counts and responses to *one* of the community compliance survey questions. We technically ran one of these models for each question, and comparing how well each of these models does can tell us how important each type of compliance behavior is for predicting future cases.
+
+* **Full question model**: This one pulls out all the stops---it uses past case counts and *every* single community compliance survey question. It's the "mac daddy" model. The upside? It captures the full picture of how people say they’re behaving. The downside? If too many of those questions don’t actually relate to case trends, the model might end up learning noise instead of signal—basically, getting really good at predicting nonsense.
 
 
 
+## <u>What we found</u>
+
+### Two questions reliably correlated with cases several weeks ahead
+
+*Figure \@ref(fig:heatmap)* shows questions that are positively and negatively related to future COVID-19 cases:
+
+```{r heatmap, fig.cap='Correlations between responses to each survey question and incident COVID-19 cases from 0 - 4 weeks ahead.'}
+pd1 <- jhu %>% 
+    mutate(inccases_lead1 = lead(inccases),
+           inccases_lead2 = lead(inccases, n = 2),
+           inccases_lead3 = lead(inccases, n = 3),
+           inccases_lead4 = lead(inccases, n = 4)) %>% 
+    select(EW, contains('lead')) %>% 
+    rename(ew = EW) %>% 
+    inner_join(d) 
+
+coding <- coding %>% 
+    mutate(question = as.integer(str_replace(question, 'q', ''))) %>% 
+    select(question, question_content) 
+
+pd2 <- pd1 %>% 
+    gather(lead, cases, inccases, contains('lead')) %>% 
+    mutate(lead = recode(lead, `inccases` = 0,
+                         `inccases_lead1` = 1,
+                         `inccases_lead2` = 2,
+                         `inccases_lead3` = 3,
+                         `inccases_lead4` = 4)) %>% 
+    inner_join(coding) %>% 
+    group_by(ew, question, lead) %>% 
+    summarize(response = mean(response, na.rm = TRUE), 
+              question_content=unique(question_content),
+              cases = unique(cases)) %>% 
+    group_by(question_content, lead) %>% 
+    summarize(r = cor.test(response, cases)$estimate,
+              ci_l = cor.test(response, cases)$conf.int[1],
+              ci_h = cor.test(response, cases)$conf.int[2],
+              p = cor.test(response, cases)$p.value) %>% 
+    mutate(p = ifelse(p < .001, 'p < .001', paste0('p = ', round(p, 3)))) %>% 
+    mutate(label = paste0('r = ', round(r, 3), '\n95CI = [', round(ci_l, 3), ', ', round(ci_h, 3), ']\n', p)) 
+
+pd3 <- pd2 %>% 
+    group_by(question_content) %>% 
+    summarize(avg_r = mean(r)) %>% 
+    inner_join(pd2) 
+
+p1 <- pd3 %>% 
+    ggplot(aes(x = lead, y = reorder(question_content, avg_r))) + 
+    geom_tile(aes(fill = r, text = label)) + 
+    scale_fill_gradientn(colors = sequ) +
+    labs(
+        x = 'Weeks ahead',
+        y = 'Survey question',
+        fill = 'Correlation\ncoefficient'
+    ) + 
+    theme_bw() + 
+    theme(panel.grid = element_blank(),
+          axis.ticks = element_blank())
+
+pp3 <- ggplotly(p1, tooltip='text')
+pp3
+```
 
 
+Colleges holding remote classes was associated with higher present and future
+COVID-19 cases (which was "significant" up to 2 weeks ahead). Conversely, people
+practing more social distancing was associated with fewer present and future
+COVID-19 cases. Interestingly, some behaviors, such as mask wearing, weren't
+associated with cases at all.
 
 
+### Model including all questions performed the best
+
+Below, in *Figure \@ref(fig:preds)*, you can see how the different models we tested stack up against each other. 
+
+```{r preds, cache=FALSE, fig.cap="Model forecasts across epidemic weeks and model types. Black line represents observed cases. Green lines and bands represent model predictions and uncertainty, repsectively."}
+cases <- jhu[jhu$EW %in% unique(d$ew), c('EW', 'inccases')]
+colnames(cases) <- tolower(colnames(cases))
+cases$forecast_week <- 1:nrow(cases)
+mw <- 1:(length(unique(cases$ew)))
+mw_ew <- data.frame(mw = mw, ew = unique(cases$ew))
+mw_ew <- inner_join(mw_ew, unique(d[, c('ew', 'year_month_day')]))
+preds_ <- preds %>% 
+    inner_join(cases[, c('forecast_week', 'ew')]) %>% 
+    inner_join(mw_ew) %>% 
+    mutate(mw = mw + step)
+
+cases <- inner_join(cases, mw_ew) 
+    
+n_x <- 5
+n_y <- 3
+mw <- unique(mw_ew$mw)
+x_labs <- mw_ew$year_month_day[seq(1, nrow(mw_ew), by = n_x)]
+x_breaks <- mw[seq(1, length(mw), by = n_x)]
+y_breaks <- seq(0, round(max(cases$inccases)) + 1000000, length.out = 5)
+keep_questions <- c(23, 2, 10, 19, 20, 99)
+levels <- coding[coding$question %in% keep_questions,]$question_content
+levels <- c('Baseline model', levels, 'Full model')
+
+p <- preds_ %>% 
+    rename(question = QS) %>% 
+    filter(quantile %in% c(0.025, .5, .975), question %in% keep_questions) %>% 
+    left_join(coding) %>% 
+    mutate(question_content = case_when(
+        question == 99 ~ 'Full model',
+        question == 23 ~ 'Baseline model',
+        TRUE ~ question_content
+    )) %>% 
+    mutate(quantile = recode(quantile, `0.025` = 'ci_l', `0.5` = 'pred', `0.975` = 'ci_h'),
+           question_content = factor(question_content, levels=levels)) %>% 
+    spread(quantile, value) %>% 
+    ggplot(aes(x = mw, y = pred)) + 
+    geom_line(data = cases, aes(x = mw, y = inccases)) +
+    geom_line(aes(group = forecast_week), color = qual[4]) + 
+    geom_point(aes(group = forecast_week, text = paste0('Week: ', year_month_day,
+                                                        '\nCases: ', round(pred),
+                                                        '\n95% CI Lower: ', round(ci_l),
+                                                        '\n95% CI Upper: ', round(ci_h))), color = qual[4]) +
+    geom_ribbon(aes(ymin = ci_l, ymax = ci_h, group = forecast_week), alpha = .4, fill = qual[4]) +
+    facet_wrap(~question_content) +
+    scale_x_continuous(labels = x_labs, breaks = x_breaks) + 
+    scale_y_continuous(breaks=y_breaks, labels = scientific) + 
+    labs(
+        x = '',
+        y = 'Incident COVID-19 cases'
+    ) + 
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          panel.grid.minor = element_blank(),
+          strip.background = element_rect(fill = NA),
+          panel.spacing.y = unit(1, 'line'))
+    
+
+ggplotly(p, tooltip='text') %>% 
+    layout(margin = list(b = 50),
+           xaxis = list(title = list(text = 'Epidemic week', standoff = 10)))
+    
+```
+
+Each facet shows a different model we tested. The first and last models are like
+bookends: the *baseline* model ignores the survey entirely, while the *full
+model* uses every survey question (only the best performing questions are
+included here).
+
+The black line shows the actual number of new COVID cases over time. The green
+line is what the model predicted, and the shaded band around it is the model’s
+uncertainty—its way of saying, "give or take a bit."
+
+If the green line closely hugs the black one, the model nailed it. If the black
+line stays inside the green band, that means the model gave a solid estimate
+with a realistic sense of uncertainty. That’s a win in forecasting land.
+
+You can see in *Figure \@ref(fig:preds)* that the period where new cases start to decline after the peak (~ `2021-01-23`) is the hardest part to predict. Only the model including the social distancing question and the full model seemed to get close during this period. When we did a full quantitative comparison, the full model actually performed the best out of all of them.
+
+We can also quantitatively compare the different models including only one question to get a sense of which question improved forecasting the most (*Figure \@ref(fig:wis)*).
+
+```{r wis, fig.cap="Model fit (WIS) scores across models including one question at different forecast ranges."}
+p <- wis %>% 
+    mutate(question = questionset_x + 1) %>% 
+    inner_join(coding) %>% 
+    group_by(question_content) %>% 
+    mutate(prop_m = mean(prop),
+           week_ahead = paste0(week_ahead, ' week(s) ahead')) %>% 
+    ungroup() %>% 
+    filter(prop_m >= quantile(prop_m, probs = .75)) %>% 
+    ggplot(aes(x = reorder(question_content, prop), y = prop)) + 
+    geom_hline(yintercept = .5, linetype = 'dashed') + 
+    geom_point(color = qual[4], aes(text = paste0('Proportion improved: ', round(prop, 3)))) + 
+    geom_errorbar(aes(ymin = lower, ymax = upper), width = 0, color = qual[4]) +
+    facet_wrap(~week_ahead) +
+    coord_flip() + 
+    ylim(0, 1) + 
+    labs(
+        x = 'Survey question',
+        y = 'Proportion WIS score improved',
+        caption = "Improvement is relative to baseline model.\n0.5 indicates the one model wasn't better than the other."
+    ) + 
+    theme_bw() + 
+    theme(panel.grid = element_blank(),
+          axis.ticks = element_blank(),
+          strip.background = element_rect(fill = NA),
+          panel.spacing.y = unit(1, 'line'))
+
+ggplotly(p, tooltip='text')
+```
+
+"Improvement" in *Figure \@ref(fig:wis)* means improvement relative to the
+baseline model (not including any questions). An improvement of 0.5 means no
+model had an advantage. If the band around the dot doesn't include 0.5, that
+means the model including the question did a better job forecasting than the
+baseline model.
+
+Here we can see that a handful of questions were quite effective for predicting
+1 to 2 weeks ahead, fewer questions were able to predict 3 weeks ahead (eg,
+staying home), and no question was great for predicting 4 weeks ahead.
 
 
+## <u>What it means</u>
 
+So, what’s the big takeaway from all this?
 
+Turns out, if you want to make better predictions during a pandemic, it might actually help to ask regular people a simple question: "Are folks around you following the rules?"
 
+We saw from our correlations and probabilistic forecasts that asking people whether their community is practicing social distancing or whether colleges are holding remote classes are more important predictors of future cases than something like mask wearing. 
 
+Even though these kinds of perceptions aren’t perfect—everyone sees the world a little differently—they still captured real, useful signals about how the virus was spreading. And when we threw those signals into a forecasting model, the model got better. Not just a little better in some fluke-y way, but consistently better, especially when we focused on behaviors that really seemed to matter—like social distancing.
 
+What’s even cooler is that these were crowdsourced perceptions. Not some official metric, not a perfectly measured compliance rate. Just people giving their take on what was happening around them.
 
+One interesting wrinkle here is what it really means when a survey question
+helps the model make better predictions. Does that mean the behavior in
+question—like social distancing—is actually more effective at slowing the spread
+of disease than something like getting tested? Not necessarily. It could just be
+that some behaviors, like social distancing, are easier for people to notice and
+judge in their communities. In contrast, things like testing rates might be
+harder to observe, even if they’re equally or more important. This highlights a
+key feature of using crowdsourced perceptions for forecasting: the best
+predictors are likely to be behaviors that are both *visible to the average person*
+and *meaningful for transmission*. That sweet spot is where human judgment
+can really shine.
 
+In a world where data gaps are inevitable—especially early in a pandemic—this
+kind of “human sensor network” could be a surprisingly powerful tool. It won’t
+replace traditional data sources, but it can fill in the cracks, add nuance, and
+maybe even give forecasters a bit of an edge when it really counts.
 
+The full model wasn’t perfect (no model ever is), but it showed that
+**collective human judgment has a place in high-stakes public health forecasting.**
+It showed that maybe your take on what’s happening around you is more valuable
+than you think.
 
 
 
