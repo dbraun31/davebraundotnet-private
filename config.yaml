@@ -22,7 +22,7 @@ params:
     MathJaxCDN: //cdnjs.cloudflare.com/ajax/libs
     MathJaxVersion: 2.7.5
     headliner: Hi, I'm Dave
-    description: "Researcher who's published in both neuroscience and population health. Happiest when I'm using cool stats stuff to solve meaningful problems."
+    description: "Researcher who's published in both neuroscience and population health. Happiest when I'm using cool data tools to solve meaningful problems."
     socials: 
         - name: Resume
           url: https://davebraun.net/resume
@@ -39,7 +39,7 @@ params:
         - r
         - yaml
     highlightjsTheme: github
-    css: ['css/override.css?v=1']
+    css: ['css/override.css?v=10']
     highlightjsVersion: 9.12.0
     logo:
         alt: Logo
