@@ -1,0 +1,405 @@
+---
+title: "Random forest fraud"
+summary: "Description pending"
+date: "2025-06-16"
+#image: "/images/metal_ball.png?v=2"
+skills:
+    - Machine learning
+    - Python
+    - Anomaly detection
+read_time: 5
+output: bookdown::html_document2
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(RColorBrewer)
+library(paletteer)
+library(plotly)
+library(reticulate)
+library(DT)
+library(reactable)
+library(scales)
+use_condaenv('ml')
+text_size <- 16
+knitr::opts_chunk$set(collapse = TRUE, cache=FALSE, out.width="100%")
+qual <- paletteer_d('nord::aurora')
+sequ <- colorRampPalette(paletteer_d('nord::silver_mine'))(100)
+
+```
+
+
+{{% highlightbox %}}
+💾 <a href="https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud?resource=download" target="_blank">Download the data</a>
+
+### TL;DR 
+
+I trained a model to detect fraudulent credit card transactions, even though fraud made up less than 1% of the data. By carefully adjusting decision thresholds and evaluating metrics like precision and recall, I built a classifier that caught 80% of fraud cases while keeping false alarms low—showing how machine learning can support real-world risk detection where class imbalance is a major challenge.
+
+### Key Skills
+* 🌲 **Ensemble Learning with Random Forests** – Trained and tuned a Random Forest classifier to detect rare fraud cases in heavily imbalanced data
+
+* ⚖️ **Imbalanced Classification** – Used precision–recall curves and threshold tuning to optimize detection of minority-class events
+
+* 📉 **Classifier Evaluation** – Interpreted ROC AUC, F1, and confusion matrices to balance recall and false positive rate in a high-stakes context
+
+* 🧪 **Model Transparency & Risk Tradeoffs** – Explored threshold-setting as a policy lever, connecting model outputs to real-world operational goals
+### What I Learned
+
+{{% /highlightbox %}}
+
+
+
+## <u>What I did</u>
+
+
+## <u>How I did it</u>
+
+For the full Python script, see [here](https://gist.github.com/dbraun31/63b629d5e932d48770c0a00c82f09683).
+
+First, we load the relevant libraries and the data
+
+<div class='show-default'></div>
+```{python}
+# Import libraries
+import numpy as np
+import pandas as pd
+import joblib
+import os
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.metrics import roc_auc_score, confusion_matrix, f1_score, classification_report
+
+# Import data
+d = pd.read_csv('post_data/creditcard.csv')
+
+```
+
+```{r echo=FALSE}
+
+preview_0 <- py$d %>% 
+    select(Time, V1:V3, V28:Class) %>% 
+    head(n=3) 
+
+preview_1 <- py$d %>% 
+    filter(Class == 1) %>% 
+    select(Time, V1:V3, V28:Class) %>% 
+    head(n=3) 
+
+preview <- rbind(preview_0, preview_1)
+
+reactable(
+  preview,
+  searchable = FALSE,
+  sortable = FALSE,
+  highlight = TRUE,
+  pagination = TRUE,
+  paginationType = "numbers",         # horizontal page numbers (default)
+  showPageSizeOptions = FALSE,        # hide dropdown
+  defaultPageSize = 10,
+  theme = reactableTheme(
+    backgroundColor = "transparent",  # let it inherit from the page
+    color = "inherit",
+    borderColor = "inherit",
+    highlightColor = "rgba(0, 0, 0, 0.05)",
+    stripedColor = "rgba(0, 0, 0, 0.02)",
+    style = list(fontSize = "0.95em"),
+    pageButtonStyle = list(
+      background = "transparent",
+      color = "inherit",
+      border = "1px solid #ccc",
+      borderRadius = "4px",
+      padding = "4px 8px",
+      margin = "0 2px"
+    ),
+    pageButtonHoverStyle = list(
+      background = "#ddd"
+    ),
+    pageButtonActiveStyle = list(
+      background = "#bbb",
+      fontWeight = "bold"
+    )
+  )
+)
+
+```
+
+
+<div class="show-default"></div>
+```{python}
+
+# --- FORMAT DATA --- #
+
+# Leave out time
+features = [x for x in d.columns if x not in ['Time', 'Class']]
+
+X = d[features].to_numpy()
+y = d['Class'].to_numpy()
+
+# Stratify y to ensure that the very few positive observations are balanced 
+# across train and test
+X_train_full, X_test, y_train_full, y_test = train_test_split(
+        X, y, stratify=y, random_state=42
+)
+
+```
+
+The table above suggests that fraud and non-fraud are equally prevalent, but they're not. Only `r mean(py$d$Class)*100`% of `nrow(py$d)` transactions are fradulent. 
+
+To control for this, we need to artificially rebalance the classes by undersampling legitimate transactions.
+
+
+<div class="show-default"></div>
+```{python}
+# --- RESAMPLE --- #
+
+# Separate legit and fraud classes
+idx_legit = np.where(y_train_full==0)[0]
+idx_fraud = np.where(y_train_full==1)[0]
+
+# Choose only the number of legit observations as there are fraudulent cases
+idx_legit_sampled = np.random.choice(idx_legit, size=len(idx_fraud),
+                                     replace=False)
+
+# Put the indices back together and shuffle
+idx = np.concat([idx_legit_sampled, idx_fraud])
+np.random.shuffle(idx)
+
+# Subsample to make balanced training data
+X_train = X_train_full[idx]
+y_train = y_train_full[idx]
+
+```
+
+Now it's time to fit, baby.
+
+<div class="show-default"></div>
+```{python}
+
+# --- FIT RANDOM FOREST WITH GRID SEARCH CV --- #
+
+param_grid = {
+    'max_depth': [5, 10, 20, None],
+    'min_samples_leaf': [1, 5, 10]
+}
+
+grid = GridSearchCV(RandomForestClassifier(n_estimators=300),
+                    param_grid,
+                    scoring='roc_auc',
+                    cv=5)
+
+
+# Load from file if it exists to reduce processing time
+if not os.path.exists('post_data/grid.pkl'):
+    grid.fit(X_train, y_train)
+    joblib.dump(grid, 'post_data/grid.pkl')
+else:
+    grid = joblib.load('post_data/grid.pkl')
+
+
+# --- PREDICT ON TEST DATA --- #
+
+# Both classification and probabilities
+y_pred = grid.predict(X_test)
+y_proba = grid.predict_proba(X_test)[:, 1]
+
+```
+
+
+
+
+## <u>What I found</u>
+
+```{python, echo=FALSE}
+y_test = y_test.reshape(-1, 1)
+y_proba = y_proba.reshape(-1, 1)
+y_pred = y_pred.reshape(-1, 1)
+preds_np = np.concat([y_test, y_proba, y_pred], axis=1)
+preds = pd.DataFrame(preds_np, columns = ['y_test', 'y_proba', 'y_pred'])
+```
+
+Making my own metric functions
+
+<div class="show-default"></div>
+```{r}
+get_f1 <- function(precision, recall) {
+    # Compute F1 score
+    out <- 2 * ((precision * recall) / (precision + recall))
+    return(out)
+}
+
+get_metrics <- function(y_test, y_pred) {
+    # Obtain a variety of performance metrics
+    
+    # Performance on positive cases
+    tp <- sum(y_test == 1 & y_pred == 1)
+    fn <- sum(y_test == 1 & y_pred == 0)
+    
+    # Performance on negative cases
+    tn <- sum(y_test == 0 & y_pred == 0)
+    fp <- sum(y_test == 0 & y_pred == 1)
+    
+    # cOMPUTE PRECISION, RECALL, FALSE POSITIVE RATE
+    # Of all categorized positive, how many were correct?
+    precision <- tp / (tp + fp)
+    # Of all actual positives, how many were correctly classified?
+    recall <- tp / (tp + fn)
+    # Of all actual negatives, how many were correctly classified?
+    fpr <- fp / (fp + tn)
+    
+    f1 <- get_f1(precision, recall)
+    
+    out <- list(precision=precision, recall=recall, fpr=fpr, f1=f1)
+    return(out)
+}
+
+get_curve <- function(threshold, preds, score='roc') {
+    y_test <- preds$y_test
+    y_proba <- preds$y_proba
+    y_pred <- ifelse(y_proba > threshold, 1, 0)
+    
+    # Compute and extract metrics
+    metrics = get_metrics(y_test, y_pred)
+    precision <- metrics$precision
+    recall <- metrics$recall
+    fpr <- metrics$fpr
+    
+    
+    if (score == 'roc') {
+        out <- data.frame(threshold=threshold, recall=recall, fpr=fpr)
+    } else {
+        out <- data.frame(threshold=threshold, precision=precision, recall=recall)
+    }
+}
+
+
+trapz_auc <- function(y_test, y_pred) {
+  # x: FPR (x-axis), y: TPR/Recall (y-axis)
+  idx <- order(y_test)  # Make sure x is sorted
+  y_test <- y_test[idx]
+  y_pred <- y_pred[idx]
+  return(sum((y_test[-1] - y_test[-length(y_test)]) * (y_pred[-1] + y_pred[-length(y_pred)]) / 2))
+}
+
+
+get_confusion <- function(y_test, y_pred) {
+    
+    # Performance on positive cases
+    tp <- sum(y_test == 1 & y_pred == 1)
+    fn <- sum(y_test == 1 & y_pred == 0)
+    
+    # Performance on negative cases
+    tn <- sum(y_test == 0 & y_pred == 0)
+    fp <- sum(y_test == 0 & y_pred == 1)
+    
+    out <- data.frame(detected_legit=c(tn, fn), detected_fraud=c(fp, tp))
+    rownames(out) <- c('actually_legit', 'actually_fraud')
+    
+    return(out)
+    
+}
+
+```
+
+```{r echo=FALSE}
+preds <- py$preds
+
+confusion <- get_confusion(preds$y_test, preds$y_pred)
+
+reactable(
+  confusion,
+  searchable = FALSE,
+  sortable = FALSE,
+  highlight = TRUE,
+  pagination = TRUE,
+  paginationType = "numbers",         # horizontal page numbers (default)
+  showPageSizeOptions = FALSE,        # hide dropdown
+  defaultPageSize = 10,
+  theme = reactableTheme(
+    backgroundColor = "transparent",  # let it inherit from the page
+    color = "inherit",
+    borderColor = "inherit",
+    highlightColor = "rgba(0, 0, 0, 0.05)",
+    stripedColor = "rgba(0, 0, 0, 0.02)",
+    style = list(fontSize = "0.95em"),
+    pageButtonStyle = list(
+      background = "transparent",
+      color = "inherit",
+      border = "1px solid #ccc",
+      borderRadius = "4px",
+      padding = "4px 8px",
+      margin = "0 2px"
+    ),
+    pageButtonHoverStyle = list(
+      background = "#ddd"
+    ),
+    pageButtonActiveStyle = list(
+      background = "#bbb",
+      fontWeight = "bold"
+    )
+  )
+)
+
+
+```
+
+
+```{r}
+thresholds <- seq(0, 1, .01)
+
+roc <- do.call(rbind, lapply(thresholds, get_curve, preds))
+
+green <- qual[4]
+
+auc <- trapz_auc(roc$fpr, roc$recall)
+
+p <- roc %>% 
+    ggplot(aes(x = fpr, y = recall)) + 
+    geom_point(color = green, aes(text = paste0('FPR: ', round(fpr,2), '\nTPR: ', round(recall, 2),
+                '\nThreshold: ', threshold, '\nAUC: ', round(auc, 2)))) + 
+    labs(
+        x = 'False positive rate',
+        y = 'True positive rate (Recall)'
+    ) + 
+    annotate('text', x = .5, y = .5, label = paste0('AUC: ', round(auc, 3)), size = 6) + 
+    theme_bw() + 
+    theme(axis.ticks = element_blank(),
+          text = element_text(size = text_size))
+
+ggplotly(p, tooltip = 'text')
+```
+
+This AUC is killer
+
+
+
+```{r}
+pr <- do.call(rbind, lapply(thresholds, get_curve, preds, score='pr'))
+
+labels <- seq(0, 1, .1)
+labels[seq(2, length(labels), 2)] <- ''
+
+p <- pr %>% 
+    ggplot(aes(x = recall, y = precision)) + 
+    geom_point(color = green, aes(text = paste0('Precision: ', precision,
+                                                '\nRecall: ', recall,
+                                                '\nThreshold: ', threshold))) + 
+    scale_x_continuous(breaks = seq(0, 1, .1)) +
+    scale_y_continuous(breaks = seq(0, 1, .1), limits = c(0, 1)) +
+    labs(
+        x = 'Proportion of true fraud detected (Recall)',
+        y = 'Proportion of correct\nfraud detections (Precision)'
+    ) +
+    theme_bw() + 
+    theme(axis.ticks = element_blank(),
+          text = element_text(size = text_size))
+    
+ggplotly(p, tooltip = 'text')
+
+```
+
+Double check that this is actually right...
+eh chat bot thinks it's okay
+
+
+## <u>What it means</u>
