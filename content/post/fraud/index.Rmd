@@ -51,15 +51,58 @@ I trained a model to detect fraudulent credit card transactions, even though fra
 
 ## <u>What I did</u>
 
-```{r fraud_clipart, echo=FALSE, fig.align='center', out.width='100%'}
+Have you ever had that sinking feeling? *Wait, I didn't buy that, what's going on? Oh no...*
 
+Fraud sucks. It's one of the few things in the tech world that's unequivocally
+bad: people stealing money. No ethical grey areas; no "but it improves
+engagement." Just theft. The world would be better without fraud. Period.
+
+
+```{r fraud_clipart, echo=FALSE, fig.align='center', out.width='100%'}
 # Image
 knitr::include_graphics('fraud_clipart.jpg')
 ```
 
+But as far as data problems go? Fraud is awesome. It’s tidy. It’s well-structured. And — at least if you ask the person who owns the credit card — it’s pretty easy to label: either a transaction was fraudulent, or it wasn’t. Because of this binary nature (0 = legit, 1 = fraud), fraud detection is beautifully suited for modeling and machine learning.
+
+I happen to love binary classification problems. There’s something so... crisp
+about them. A light switch is either on or off. A coin lands on heads or tails.
+*The Dark Knight* is either an extremely awesome movie — or the best movie of all
+time.
+
+That simplicity contrasts with continuous prediction problems, like guessing the
+exact temperature tomorrow. There will always be some error — and my fellow
+probability nerds know: the chance that a continuous variable hits one exact
+value is literally zero. Thanks to floating-point precision, the odds that it’ll
+be **exactly** 67.000000°F at 4:00 PM? Basically nil. It might be 67.1203948326490°F
+instead.
+
+Anyway, I took on this fraud prediction challenge for two reasons:  
+
+(1) I love classification, and  
+
+(2) I wanted to sharpen up my understanding of classifier performance metrics.
+
+We’ll get into what those metrics are soon, but in short: they’re how we know whether the model’s actually doing its job. Spoiler: raw accuracy doesn’t cut it — especially when you’re trying to predict something rare, like fraud.
+
+Let’s get into it.
 
 
 ## <u>How I did it</u>
+
+I grabbed a credit card fraud dataset off of Kaggle, that you can find <a href="https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud?resource=download" target="_blank">here.</a>
+
+I’ll show snippets of the Python code I used to work with the data, but here’s
+the first thing to know: this dataset comes fully preprocessed. That’s a big
+deal, because in most real-world projects, cleaning and preparing the data takes
+up like 80% of the work.
+
+Think of it like this: someone already gutted and repainted the whole house (and
+painting a whole house is the *worst*, by the way). All I had to do was move in
+and decide where to put the furniture. Still important work — but major props to
+the folks who did the heavy lifting on Kaggle.
+
+Since I wanted to focus on modeling and evaluation, skipping the data wrangling made sense here.
 
 For the full Python script, see [here](https://gist.github.com/dbraun31/63b629d5e932d48770c0a00c82f09683).
 
@@ -80,6 +123,8 @@ from sklearn.metrics import roc_auc_score, confusion_matrix, f1_score, classific
 d = pd.read_csv('post_data/creditcard.csv')
 
 ```
+
+Next, I'm taking a peek at a subset of the rows and columns. 
 
 ```{r echo=FALSE}
 
@@ -129,6 +174,46 @@ reactable(
 )
 ```
 
+In reality, we have columns `V1` through `V28`. There’s also `Time`, which represents
+the time elapsed since the previous transaction, `Amount`, which is the dollar
+amount of the transaction, and `Class`, which is our target label: `0` for legit, `1`
+for fraud.
+
+Now — you might look at the table preview and think, “Huh, looks like fraud is
+about as common as normal transactions.”
+
+**Not even close.**
+
+Only `r round(mean(py$d$Class)*100, 2)`% of the `r nrow(py$d)` transactions in this dataset
+are actually fraudulent. For demonstration purposes, I’ve just selected an equal
+number of legit and fraud rows to show side-by-side. That balance makes it
+easier to eyeball patterns — but it’s not how the full dataset looks.
+
+You’ll also notice all those `V` columns — `V1` through `V28`. These are the result of
+PCA transformations on the original transaction data.
+
+Explaining PCA fully would take more than a sentence, but here’s the gist: PCA
+is like Marie Kondo for your dataset. It takes a messy pile of potentially
+correlated variables and distills them into a few compact, uncorrelated
+components that still capture most of the action — so you can model smarter with
+less clutter. And because these components are combinations of the original
+inputs, they don’t reveal sensitive details directly, which makes PCA a handy
+privacy-preserving step too.
+
+I'm simplifying things a bit below by only including the `V` variables (dropping
+`Time`), and separating `Class` into its own vector that I'll use for modeling.
+At this point I'm also stratifying the data into training and testing sets. 
+
+As mentioned earlier, we’re dealing with *heavily imbalanced classes* — the vast
+majority of transactions are legit, and only a tiny fraction are fraud. This
+imbalance can really trip up many classifiers, so we need to make a few
+adjustments to help the model out.
+
+First, I use `stratify = y` when splitting the data. This ensures that both the
+training and testing sets contain the same proportion of fraud cases — crucial
+when those cases are rare. Without this, your test set could end up with almost
+no fraud at all, making it useless for evaluation.
+
 
 <div class="show-default"></div>
 ```{python}
@@ -149,10 +234,19 @@ X_train_full, X_test, y_train_full, y_test = train_test_split(
 
 ```
 
-The table above suggests that fraud and non-fraud are equally prevalent, but they're not. Only `r mean(py$d$Class)*100`% of `nrow(py$d)` transactions are fradulent. 
+Next comes the tricky part: actually balancing the data for training.
 
-To control for this, we need to artificially rebalance the classes by undersampling legitimate transactions.
+There are several strategies here, but I went with *undersampling* the majority
+class. Here’s a quick analogy: imagine you’re filling a bag with red and blue
+marbles. You’ve got way more blue than red. To get a balanced bag, you can keep
+all the red marbles and randomly select just as many blue ones. Boom — balance
+achieved.
 
+That’s exactly what I did. I kept all the fraud cases (the rare red marbles),
+and randomly sampled an equal number of legit transactions (the common blue
+marbles). This gives me a balanced training set with a 50/50 class split — even
+though, in reality, fraud accounts for only `r round(mean(py$d$Class)*100, 2)`% of all
+transactions in the original dataset.
 
 <div class="show-default"></div>
 ```{python}
