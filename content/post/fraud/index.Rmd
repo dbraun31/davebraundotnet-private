@@ -17,7 +17,6 @@ library(RColorBrewer)
 library(paletteer)
 library(plotly)
 library(reticulate)
-library(DT)
 library(reactable)
 library(scales)
 use_condaenv('ml')
@@ -51,6 +50,13 @@ I trained a model to detect fraudulent credit card transactions, even though fra
 
 
 ## <u>What I did</u>
+
+```{r fraud_clipart, echo=FALSE, fig.align='center', out.width='100%'}
+
+# Image
+knitr::include_graphics('fraud_clipart.jpg')
+```
+
 
 
 ## <u>How I did it</u>
@@ -98,9 +104,9 @@ reactable(
   showPageSizeOptions = FALSE,        # hide dropdown
   defaultPageSize = 10,
   theme = reactableTheme(
-    backgroundColor = "transparent",  # let it inherit from the page
-    color = "inherit",
-    borderColor = "inherit",
+    backgroundColor = "#252627",  # let it inherit from the page
+    color = "#fff",
+    borderColor = "var(--borders)",
     highlightColor = "rgba(0, 0, 0, 0.05)",
     stripedColor = "rgba(0, 0, 0, 0.02)",
     style = list(fontSize = "0.95em"),
@@ -121,7 +127,6 @@ reactable(
     )
   )
 )
-
 ```
 
 
@@ -249,7 +254,8 @@ get_metrics <- function(y_test, y_pred) {
     
     f1 <- get_f1(precision, recall)
     
-    out <- list(precision=precision, recall=recall, fpr=fpr, f1=f1)
+    out <- list(precision=precision, recall=recall, fpr=fpr, f1=f1,
+                fn=fn, fp=fp)
     return(out)
 }
 
@@ -299,49 +305,42 @@ get_confusion <- function(y_test, y_pred) {
     
 }
 
+
+get_cost <- function(threshold, preds, type1_cost, type2_cost) {
+    y_test <- preds$y_test
+    y_proba <- preds$y_proba
+    y_pred <- ifelse(y_proba > threshold, 1, 0)
+    
+    metrics <- get_metrics(y_test, y_pred)
+    fn <- metrics$fn
+    fp <- metrics$fp
+    
+    cost <- (type1_cost * fp) + (type2_cost * fn)
+    
+    return(data.frame(threshold=threshold, cost=cost))
+}
+
 ```
 
-```{r echo=FALSE}
+The positive skew of predicted probabilities
+
+```{r}
 preds <- py$preds
-
-confusion <- get_confusion(preds$y_test, preds$y_pred)
-
-reactable(
-  confusion,
-  searchable = FALSE,
-  sortable = FALSE,
-  highlight = TRUE,
-  pagination = TRUE,
-  paginationType = "numbers",         # horizontal page numbers (default)
-  showPageSizeOptions = FALSE,        # hide dropdown
-  defaultPageSize = 10,
-  theme = reactableTheme(
-    backgroundColor = "transparent",  # let it inherit from the page
-    color = "inherit",
-    borderColor = "inherit",
-    highlightColor = "rgba(0, 0, 0, 0.05)",
-    stripedColor = "rgba(0, 0, 0, 0.02)",
-    style = list(fontSize = "0.95em"),
-    pageButtonStyle = list(
-      background = "transparent",
-      color = "inherit",
-      border = "1px solid #ccc",
-      borderRadius = "4px",
-      padding = "4px 8px",
-      margin = "0 2px"
-    ),
-    pageButtonHoverStyle = list(
-      background = "#ddd"
-    ),
-    pageButtonActiveStyle = list(
-      background = "#bbb",
-      fontWeight = "bold"
-    )
-  )
-)
-
-
+p <- preds %>% 
+    ggplot(aes(x = y_proba)) +
+    geom_histogram(fill = 'steelblue', color = 'black') + 
+    labs(
+        x = 'Probability of fraud',
+        y = 'Frequency'
+    ) + 
+    theme_bw() + 
+    theme(panel.grid = element_blank(),
+          axis.ticks = element_blank(),
+          text = element_text(size = text_size))
+    
+ggplotly(p)
 ```
+
 
 
 ```{r}
@@ -401,7 +400,111 @@ ggplotly(p, tooltip = 'text')
 Double check that this is actually right...
 eh chat bot thinks it's okay
 small change
-the DTs are messed up now...
+the DTs are messed up now... update
+
+expected cost vs. threshold analysis
+
+```{r}
+bins <- cut(preds$y_proba, breaks = seq(0, 1, length.out=50), include.lowest=TRUE)
+
+preds$bins <- bins
+
+p <- preds %>% 
+    group_by(bins) %>% 
+    summarize(y_proba = mean(y_proba), y_prop = mean(y_test), count = n()) %>% 
+    ggplot(aes(x = y_proba, y = y_prop)) + 
+    geom_point(aes(text = paste0('Observations: ', count), size = count, color = count)) + 
+    labs(
+        x = 'Mean predicted value',
+        y = 'Proportion of frauds',
+        color = 'Number of\nobservations'
+    ) +
+    theme_bw() + 
+    theme(panel.grid = element_blank(),
+          axis.ticks = element_blank(),
+          text = element_text(size = text_size))
+
+ggplotly(p, tooltip = 'text')
+```
 
 
+Finding the best decision threshold by estimating costs: \$500 for FN and \$10 for FP
+
+```{r}
+thresholds <- seq(0, 1, .01)
+type1_cost <- 10
+type2_cost <- 500
+
+costs <- do.call(rbind, lapply(thresholds, FUN=get_cost, preds, type1_cost, type2_cost))
+optimum <- costs[costs$cost == min(costs$cost),]$threshold
+mark <- data.frame(threshold = .82, cost = 1.5e+05, 
+                   label = paste0('Optimal decision\nthreshold: ', optimum))
+
+p <- costs %>% 
+    mutate(optimal = ifelse(cost == min(cost), 'yes', 'no')) %>% 
+    ggplot(aes(x = threshold, y = cost)) + 
+    geom_point(aes(size = optimal, color = optimal, shape = optimal,
+                   text = paste0('Decision threshold: ', threshold, '\nCost: ', cost))) + 
+    geom_text(data = mark, aes(label = label)) + 
+    labs(
+        x = 'Decision threshold',
+        y = 'Cost ($)'
+    ) + 
+    scale_size_manual(values = c(`no` = 1, `yes` = 7)) +
+    scale_shape_manual(values = c(`no` = 16, `yes` = 8)) +
+    scale_color_manual(values = c(`no` = 'black', `yes` = 'green')) +
+    theme_bw() + 
+    theme(legend.position = 'none',
+          panel.grid = element_blank(),
+          axis.ticks = element_blank(),
+          text = element_text(size = text_size))
+
+ggplotly(p, tooltip = 'text')
+
+```
+
+
+
+
+```{r echo=FALSE}
+
+preds$y_pred <- ifelse(preds$y_proba > optimum, 1, 0)
+
+confusion <- get_confusion(preds$y_test, preds$y_pred)
+
+reactable(
+  confusion,
+  searchable = FALSE,
+  sortable = FALSE,
+  highlight = TRUE,
+  pagination = TRUE,
+  paginationType = "numbers",         # horizontal page numbers (default)
+  showPageSizeOptions = FALSE,        # hide dropdown
+  defaultPageSize = 10,
+  theme = reactableTheme(
+    backgroundColor = "transparent",  # let it inherit from the page
+    color = "inherit",
+    borderColor = "inherit",
+    highlightColor = "rgba(0, 0, 0, 0.05)",
+    stripedColor = "rgba(0, 0, 0, 0.02)",
+    style = list(fontSize = "0.95em"),
+    pageButtonStyle = list(
+      background = "transparent",
+      color = "inherit",
+      border = "1px solid #ccc",
+      borderRadius = "4px",
+      padding = "4px 8px",
+      margin = "0 2px"
+    ),
+    pageButtonHoverStyle = list(
+      background = "#ddd"
+    ),
+    pageButtonActiveStyle = list(
+      background = "#bbb",
+      fontWeight = "bold"
+    )
+  )
+)
+
+```
 ## <u>What it means</u>

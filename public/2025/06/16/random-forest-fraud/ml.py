@@ -64,7 +64,7 @@ y_pred = grid.predict(X_test)[:, 1]
 # --- EVALUATE FIT --- #
 
 print(confusion_matrix(y_test, y_pred))
-print(classification_report(y_true, y_pred))
+print(classification_report(y_test, y_pred))
 print(roc_auc_score(y_test, y_proba))
 
 
