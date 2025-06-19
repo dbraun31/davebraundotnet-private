@@ -1,7 +1,7 @@
-
 /* Read more buttonss */
 
 /* Dave's Root Variabless */
+
 :root {
     --primary-bg: #FCFDFF;
     --primary-text: #353d49;
@@ -53,6 +53,7 @@
 
 
 /* Other stuff */
+
 
 .subtitle {
 	word-wrap: break-word;
@@ -158,3 +159,5 @@
   color: var(--secondary-text) !important;
   border-color: var(--borders) !important;
 }
+
+*/
