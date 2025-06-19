@@ -3,12 +3,12 @@ title: "Exploring fraud detection through hands-on modeling and smart tradeoffs.
 summary: "I walk through building a fraud detection model with random forests, showing how to tune parameters, evaluate performance, and factor in real business costs—demonstrating how data science and risk management come together for smarter fraud prevention."
 date: "2025-06-19"
 math: true
-#image: "/images/metal_ball.png?v=2"
+image: "/images/plant.png"
 skills:
     - Machine learning
     - Python
     - Anomaly detection
-read_time: 5
+read_time: 10
 output: bookdown::html_document2
 ---
 
@@ -44,7 +44,6 @@ I trained a model to detect fraudulent credit card transactions, even though fra
 * 📉 **Classifier Evaluation** – Interpreted ROC AUC, F1, and confusion matrices to balance recall and false positive rate in a high-stakes context
 
 * 🧪 **Model Transparency & Risk Tradeoffs** – Explored threshold-setting as a policy lever, connecting model outputs to real-world operational goals and business costs
-### What I Learned
 
 ### What I Learned
 Balancing performance metrics like precision and recall with real-world business costs is crucial for building effective, practical fraud detection models.
@@ -99,11 +98,6 @@ the first thing to know: this dataset comes fully preprocessed. That’s a big
 deal, because in most real-world projects, cleaning and preparing the data takes
 up like 80% of the work.
 
-Think of it like this: someone already gutted and repainted the whole house (and
-painting a whole house is the *worst*, by the way). All I had to do was move in
-and decide where to put the furniture. Still important work — but major props to
-the folks who did the heavy lifting on Kaggle.
-
 Since I wanted to focus on modeling and evaluation, skipping the data wrangling made sense here.
 
 For the full Python script, see [here](https://gist.github.com/dbraun31/63b629d5e932d48770c0a00c82f09683).
@@ -119,7 +113,6 @@ import joblib
 import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.metrics import roc_auc_score, confusion_matrix, f1_score, classification_report
 
 # Import data
 d = pd.read_csv('post_data/creditcard.csv')
@@ -261,7 +254,7 @@ idx_legit_sampled = np.random.choice(idx_legit, size=len(idx_fraud),
                                      replace=False)
 
 # Put the indices back together and shuffle
-idx = np.concat([idx_legit_sampled, idx_fraud])
+idx = np.concatenate([idx_legit_sampled, idx_fraud])
 np.random.shuffle(idx)
 
 # Subsample to make balanced training data
@@ -284,7 +277,7 @@ I’m building a forest with 300 trees — plenty to capture stable patterns wit
 
 
 <div class="show-default"></div>
-```{python}
+```{python warning=FALSE}
 
 # --- FIT RANDOM FOREST WITH GRID SEARCH CV --- #
 
@@ -343,7 +336,7 @@ y_proba = grid.predict_proba(X_test)[:, 1]
 y_test = y_test.reshape(-1, 1)
 y_proba = y_proba.reshape(-1, 1)
 y_pred = y_pred.reshape(-1, 1)
-preds_np = np.concat([y_test, y_proba, y_pred], axis=1)
+preds_np = np.concatenate([y_test, y_proba, y_pred], axis=1)
 preds = pd.DataFrame(preds_np, columns = ['y_test', 'y_proba', 'y_pred'])
 ```
 
@@ -615,7 +608,8 @@ ggplotly(p, tooltip = 'text')
 
 We can see that as we lower the decision threshold—meaning we're more willing to label transactions as fraud—recall goes up: we catch more true fraud. But precision drops, because we also start flagging more legit transactions by mistake. There’s a tradeoff. A pretty high threshold (~0.95) gives us a balance of around 0.75 precision and 0.75 recall—not bad.
 
-The next plot brings in a business perspective. Suppose we talked to the fraud and customer care teams, and they gave us rough estimates for the cost of each kind of error. For example, let’s say it costs $10 to investigate a legit transaction that was mistakenly flagged, and $500 for every missed fraud case. Given these estimates, we can compute the total cost of mistakes for every decision threshold.
+The next plot brings in a business perspective. Suppose we talked to the fraud and customer care teams, and they gave us rough estimates for the cost of each kind of error. For example, let’s say it costs \$10 to investigate a legit transaction that was mistakenly flagged, 
+and \$500 for every missed fraud case. Given these estimates, we can compute the total cost of mistakes for every decision threshold.
 
 That’s what I’m plotting here. Each point represents a threshold and its corresponding total cost. We can hover to see the numbers, and identify the threshold that minimizes cost overall. In this case, that optimal point lands at a decision threshold of 0.82.
 
@@ -654,7 +648,7 @@ ggplotly(p, tooltip = 'text')
 
 ```
 
-Using that 0.82 threshold, we can calculate how the model performs in terms of raw outcomes. Specifically, we can count how many legit transactions were correctly ignored, how many were falsely flagged, and how many fraud cases were correctly or incorrectly classified. This summary is shown in a table known as a confusion matrix:
+Using that 0.82 threshold, we can calculate how the model performs in terms of raw outcomes. Specifically, we can count how many legit transactions were correctly ignored, how many were falsely flagged, and how many fraud cases were correctly or incorrectly classified. This summary is shown in a table known as a *confusion matrix*:
 
 
 ```{r echo=FALSE}
@@ -667,7 +661,6 @@ confusion <- get_confusion(preds$y_test, preds$y_pred)
 | **Truly fraud** | `r confusion[2,1]` | `r confusion[2,2]` |
 
 Out of around 71,000 transactions, we missed 18 frauds and unnecessarily flagged 133 legit ones. That’s a pretty decent balance—especially considering how rare fraud is in the dataset.
-
 
 ## <u>What it means</u>
 
