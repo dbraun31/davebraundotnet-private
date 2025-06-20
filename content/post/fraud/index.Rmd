@@ -320,6 +320,7 @@ locked into a single cutoff (like "anything over 0.5 = fraud"), I can explore
 different thresholds and see how the model performs across the board. That’s
 super helpful for tuning model evaluation metrics, which we'll see next.
 
+<div class="show-default"></div>
 ```{python}
 # --- PREDICT ON TEST DATA --- #
 
@@ -384,7 +385,7 @@ knitr::include_graphics('formula3_fpr.png')
 As we’ll see below, these metrics often trade off against each other—higher recall can mean lower precision, and vice versa. That’s why we often visualize them as curves across different decision thresholds. It makes the tradeoffs tangible.
 
 At this point, I’m switching over to R, because when it comes to visualization,
-I’m a big `ggplot2` head. `matplotlib` and `seaborn` are cool, but ggplot2 just
+I’m a big `ggplot2` head. `matplotlib` and `seaborn` are cool, but `ggplot2` just
 hits different.
 
 I'm showing just a snippet of my evaluation functions below. For the full R script, see
@@ -560,8 +561,8 @@ auc <- trapz_auc(roc$fpr, roc$recall)
 p <- roc %>% 
     ggplot(aes(x = fpr, y = recall)) + 
     geom_abline(intercept = 0, slope = 1, linetype = 'dashed', color = 'lightgrey') + 
-    geom_point(color = green, aes(text = paste0('FPR: ', round(fpr,2), '\nTPR: ', round(recall, 2),
-                '\nThreshold: ', threshold, '\nAUC: ', round(auc, 2)))) + 
+    geom_point(color = green, aes(text = paste0('FPR: ', round(fpr,3), '\nTPR: ', round(recall, 2),
+                '\nThreshold: ', threshold, '\nAUC: ', round(auc, 3)))) + 
     labs(
         x = 'False positive rate',
         y = 'True positive rate (Recall)'
@@ -652,6 +653,7 @@ Using that 0.82 threshold, we can calculate how the model performs in terms of r
 
 
 ```{r echo=FALSE}
+preds$y_pred <- ifelse(preds$y_proba > optimum, 1, 0)
 confusion <- get_confusion(preds$y_test, preds$y_pred)
 ```
 
@@ -660,7 +662,7 @@ confusion <- get_confusion(preds$y_test, preds$y_pred)
 | **Truly legitimate** | `r confusion[1,1]` | `r confusion[1,2]` |
 | **Truly fraud** | `r confusion[2,1]` | `r confusion[2,2]` |
 
-Out of around 71,000 transactions, we missed 18 frauds and unnecessarily flagged 133 legit ones. That’s a pretty decent balance—especially considering how rare fraud is in the dataset.
+Out of around 71,000 transactions, we missed `r confusion[2,1]` frauds and unnecessarily flagged `r confusion[1, 2]` legit ones. That’s a pretty decent balance—especially considering how rare fraud is in the dataset.
 
 ## <u>What it means</u>
 
